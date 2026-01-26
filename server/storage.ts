@@ -6,6 +6,7 @@ export interface IStorage {
   getFiles(): Promise<FileRecord[]>;
   getFile(id: number): Promise<FileRecord | undefined>;
   createFile(file: InsertFile): Promise<FileRecord>;
+  updateFile(id: number, data: any): Promise<FileRecord>;
   deleteFile(id: number): Promise<void>;
 }
 
@@ -21,6 +22,11 @@ export class DatabaseStorage implements IStorage {
 
   async createFile(insertFile: InsertFile): Promise<FileRecord> {
     const [file] = await db.insert(files).values(insertFile).returning();
+    return file;
+  }
+
+  async updateFile(id: number, data: any): Promise<FileRecord> {
+    const [file] = await db.update(files).set({ data }).where(eq(files.id, id)).returning();
     return file;
   }
 

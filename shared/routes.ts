@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertFileSchema, files } from './schema';
+import { insertFileSchema, files, preprocessingActionSchema } from './schema';
 
 // ============================================
 // SHARED ERROR SCHEMAS
@@ -40,10 +40,19 @@ export const api = {
     upload: {
       method: 'POST' as const,
       path: '/api/files',
-      // Input is multipart/form-data, handled specially
       responses: {
         201: z.custom<typeof files.$inferSelect>(),
         400: errorSchemas.validation,
+      },
+    },
+    preprocess: {
+      method: 'POST' as const,
+      path: '/api/files/:id/preprocess',
+      input: preprocessingActionSchema,
+      responses: {
+        200: z.custom<typeof files.$inferSelect>(),
+        400: errorSchemas.validation,
+        404: errorSchemas.notFound,
       },
     },
     delete: {
@@ -77,3 +86,4 @@ export function buildUrl(path: string, params?: Record<string, string | number>)
 // ============================================
 export type FileResponse = z.infer<typeof api.files.upload.responses[201]>;
 export type FilesListResponse = z.infer<typeof api.files.list.responses[200]>;
+export type PreprocessInput = z.infer<typeof api.files.preprocess.input>;

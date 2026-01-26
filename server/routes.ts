@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import multer from "multer";
 import * as XLSX from "xlsx";
+import { format, parseISO, isValid } from "date-fns";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -18,8 +19,8 @@ export async function registerRoutes(
 ): Promise<Server> {
 
   // Seed demo data if empty
-  const files = await storage.getFiles();
-  if (files.length === 0) {
+  const initialFiles = await storage.getFiles();
+  if (initialFiles.length === 0) {
     await storage.createFile({
       filename: "demo_sales_data.xlsx",
       originalName: "demo_sales_data.xlsx",
@@ -69,7 +70,7 @@ export async function registerRoutes(
         originalName: req.file.originalname,
         mimeType: req.file.mimetype,
         size: req.file.size,
-        data: data as any, // Cast to any for jsonb compatibility
+        data: data as any,
       });
 
       res.status(201).json(fileRecord);
@@ -79,16 +80,116 @@ export async function registerRoutes(
     }
   });
 
+  app.post(api.files.preprocess.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+
+    const file = await storage.getFile(id);
+    if (!file) return res.status(404).json({ message: "File not found" });
+
+    try {
+      const action = api.files.preprocess.input.parse(req.body);
+      let data = [...(file.data as any[])];
+
+      switch (action.type) {
+        case "capitalize":
+          data = data.map(row => {
+            const newRow = { ...row };
+            action.columns.forEach(col => {
+              if (typeof newRow[col] === 'string') newRow[col] = newRow[col].toUpperCase();
+            });
+            return newRow;
+          });
+          break;
+        case "lowercase":
+          data = data.map(row => {
+            const newRow = { ...row };
+            action.columns.forEach(col => {
+              if (typeof newRow[col] === 'string') newRow[col] = newRow[col].toLowerCase();
+            });
+            return newRow;
+          });
+          break;
+        case "capitalizeFirst":
+          data = data.map(row => {
+            const newRow = { ...row };
+            action.columns.forEach(col => {
+              if (typeof newRow[col] === 'string') {
+                newRow[col] = newRow[col].split(' ')
+                  .map((s: string) => s.charAt(0).toUpperCase() + s.substring(1).toLowerCase())
+                  .join(' ');
+              }
+            });
+            return newRow;
+          });
+          break;
+        case "removeCharacters":
+          const chars = action.characters;
+          data = data.map(row => {
+            const newRow = { ...row };
+            action.columns.forEach(col => {
+              if (typeof newRow[col] === 'string') {
+                const regex = new RegExp(`[${chars.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}]`, 'g');
+                newRow[col] = newRow[col].replace(regex, '');
+              }
+            });
+            return newRow;
+          });
+          break;
+        case "replaceCharacters":
+          data = data.map(row => {
+            const newRow = { ...row };
+            action.columns.forEach(col => {
+              if (typeof newRow[col] === 'string') {
+                newRow[col] = newRow[col].split(action.find).join(action.replace);
+              }
+            });
+            return newRow;
+          });
+          break;
+        case "removeDuplicates":
+          const seen = new Set();
+          data = data.filter(row => {
+            const key = action.columns.map(col => row[col]).join('|');
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          break;
+        case "removeRows":
+          data = data.filter((_, i) => !action.indices.includes(i));
+          break;
+        case "convertDate":
+          data = data.map(row => {
+            const newRow = { ...row };
+            action.columns.forEach(col => {
+              const val = newRow[col];
+              if (val) {
+                const date = typeof val === 'string' ? parseISO(val) : new Date(val);
+                if (isValid(date)) {
+                  newRow[col] = format(date, action.format);
+                }
+              }
+            });
+            return newRow;
+          });
+          break;
+      }
+
+      const updatedFile = await storage.updateFile(id, data);
+      res.json(updatedFile);
+    } catch (error) {
+      console.error('Preprocessing error:', error);
+      res.status(400).json({ message: "Invalid preprocessing action" });
+    }
+  });
+
   app.delete(api.files.delete.path, async (req, res) => {
     const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid ID" });
-    }
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
     
     const file = await storage.getFile(id);
-    if (!file) {
-      return res.status(404).json({ message: "File not found" });
-    }
+    if (!file) return res.status(404).json({ message: "File not found" });
 
     await storage.deleteFile(id);
     res.status(204).send();

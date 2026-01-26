@@ -26,5 +26,16 @@ export type InsertFile = z.infer<typeof insertFileSchema>;
 export type FileResponse = FileRecord;
 export type FilesListResponse = FileRecord[];
 
-// For file upload, the request is multipart/form-data, so we don't define a JSON body schema here for the upload itself,
-// but we define the response structure.
+// === PREPROCESSING SCHEMAS ===
+export const preprocessingActionSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("capitalize"), columns: z.array(z.string()) }),
+  z.object({ type: z.literal("lowercase"), columns: z.array(z.string()) }),
+  z.object({ type: z.literal("capitalizeFirst"), columns: z.array(z.string()) }),
+  z.object({ type: z.literal("removeCharacters"), columns: z.array(z.string()), characters: z.string() }),
+  z.object({ type: z.literal("replaceCharacters"), columns: z.array(z.string()), find: z.string(), replace: z.string() }),
+  z.object({ type: z.literal("removeDuplicates"), columns: z.array(z.string()) }),
+  z.object({ type: z.literal("removeRows"), indices: z.array(z.number()) }),
+  z.object({ type: z.literal("convertDate"), columns: z.array(z.string()), format: z.string() }),
+]);
+
+export type PreprocessingAction = z.infer<typeof preprocessingActionSchema>;
