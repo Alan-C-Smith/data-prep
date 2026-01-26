@@ -57,6 +57,32 @@ export function useUploadFile() {
   });
 }
 
+// POST /api/files/:id/preprocess
+export function usePreprocessFile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, action }: { id: number; action: any }) => {
+      const url = buildUrl(api.files.preprocess.path, { id });
+      const res = await fetch(url, {
+        method: api.files.preprocess.method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(action),
+      });
+
+      if (res.status === 404) throw new Error("File not found");
+      if (res.status === 400) {
+        const error = api.files.preprocess.responses[400].parse(await res.json());
+        throw new Error(error.message);
+      }
+      if (!res.ok) throw new Error("Failed to preprocess file");
+      return api.files.preprocess.responses[200].parse(await res.json());
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.files.get.path] });
+    },
+  });
+}
+
 // DELETE /api/files/:id
 export function useDeleteFile() {
   const queryClient = useQueryClient();

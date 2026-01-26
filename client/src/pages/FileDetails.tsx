@@ -1,8 +1,10 @@
 import { useParams, Link } from "wouter";
 import { Navbar } from "@/components/Navbar";
 import { DataTable } from "@/components/DataTable";
+import { PreprocessingPanel } from "@/components/PreprocessingPanel";
 import { useFile, useDeleteFile } from "@/hooks/use-files";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import { 
   ArrowLeft, 
   Calendar, 
@@ -28,9 +30,21 @@ import {
 export default function FileDetails() {
   const { id } = useParams<{ id: string }>();
   const fileId = parseInt(id);
-  const { data: file, isLoading, error } = useFile(fileId);
+  const { data: file, isLoading, error, refetch } = useFile(fileId);
   const { mutate: deleteFile, isPending: isDeleting } = useDeleteFile();
   const { toast } = useToast();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
+
+  const handleColumnToggle = (column: string) => {
+    const newSelected = new Set(selectedColumns);
+    if (newSelected.has(column)) {
+      newSelected.delete(column);
+    } else {
+      newSelected.add(column);
+    }
+    setSelectedColumns(newSelected);
+  };
 
   const handleDelete = () => {
     deleteFile(fileId, {
@@ -164,12 +178,48 @@ export default function FileDetails() {
         </div>
 
         {/* Data View */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-display font-bold text-foreground">Data Preview</h2>
+        <div className="space-y-8">
+          {/* Preprocessing Section */}
+          <div>
+            <h2 className="text-xl font-display font-bold text-foreground mb-4">
+              Preprocessing Operations
+            </h2>
+            <p className="text-muted-foreground text-sm mb-4">
+              Transform your data by applying one operation at a time. After each operation, the data will update automatically.
+            </p>
+
+            {(() => {
+              const fileData = (file.data as any[]) || [];
+              const columns = fileData.length > 0 ? Object.keys(fileData[0]) : [];
+              return (
+                <PreprocessingPanel
+                  fileId={fileId}
+                  columns={columns}
+                  data={fileData}
+                  selectedColumns={selectedColumns}
+                  onColumnSelect={handleColumnToggle}
+                  onSuccess={() => {
+                    refetch();
+                    setRefreshKey(prev => prev + 1);
+                  }}
+                />
+              );
+            })()}
           </div>
-          
-          <DataTable data={file.data as any[]} />
+
+          {/* Data Preview Section */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-display font-bold text-foreground">Data Preview</h2>
+            </div>
+            
+            <DataTable 
+              key={refreshKey} 
+              data={file.data as any[]}
+              selectedColumns={selectedColumns}
+              onColumnSelect={handleColumnToggle}
+            />
+          </div>
         </div>
       </main>
     </div>

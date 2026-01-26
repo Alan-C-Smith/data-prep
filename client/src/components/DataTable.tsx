@@ -11,9 +11,11 @@ import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 interface DataTableProps {
   data: any[];
+  onColumnSelect?: (column: string) => void;
+  selectedColumns?: Set<string>;
 }
 
-export function DataTable({ data }: DataTableProps) {
+export function DataTable({ data, onColumnSelect, selectedColumns }: DataTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const itemsPerPage = 10;
@@ -40,6 +42,7 @@ export function DataTable({ data }: DataTableProps) {
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+  const actualStartIndex = (currentPage - 1) * itemsPerPage;
 
   return (
     <div className="space-y-4">
@@ -69,8 +72,18 @@ export function DataTable({ data }: DataTableProps) {
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow className="hover:bg-transparent">
+                <TableHead className="w-12 px-4 py-4 text-center font-bold text-foreground text-xs bg-muted/70 border-r border-border sticky left-0 z-10">#</TableHead>
                 {headers.map((header) => (
-                  <TableHead key={header} className="font-bold text-foreground whitespace-nowrap px-6 py-4">
+                  <TableHead 
+                    key={header} 
+                    onClick={() => onColumnSelect?.(header)}
+                    className={`font-bold text-foreground whitespace-nowrap px-6 py-4 cursor-pointer transition-colors ${
+                      selectedColumns?.has(header) 
+                        ? 'bg-primary/20 text-primary' 
+                        : 'hover:bg-muted/50'
+                    }`}
+                    title="Click to select/deselect column"
+                  >
                     {header}
                   </TableHead>
                 ))}
@@ -80,6 +93,9 @@ export function DataTable({ data }: DataTableProps) {
               {paginatedData.length > 0 ? (
                 paginatedData.map((row, i) => (
                   <TableRow key={i} className="hover:bg-muted/30 transition-colors">
+                    <TableCell className="w-12 px-4 py-4 text-center text-xs text-muted-foreground font-medium bg-muted/20 border-r border-border sticky left-0 z-10">
+                      {actualStartIndex + i}
+                    </TableCell>
                     {headers.map((header) => (
                       <TableCell key={`${i}-${header}`} className="px-6 py-4 text-sm text-muted-foreground whitespace-nowrap">
                         {row[header] !== null && row[header] !== undefined ? String(row[header]) : <span className="text-muted-foreground/30 italic">null</span>}
@@ -89,7 +105,7 @@ export function DataTable({ data }: DataTableProps) {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={headers.length} className="h-24 text-center">
+                  <TableCell colSpan={headers.length + 1} className="h-24 text-center">
                     No results found.
                   </TableCell>
                 </TableRow>
