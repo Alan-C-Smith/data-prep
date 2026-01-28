@@ -5,12 +5,14 @@ A modern, browser-based data preprocessing application built with **Next.js** an
 ## Features
 
 ✨ **Browser-Based Processing**
+
 - All data processing happens in your browser
 - No data is sent to any server
 - Single document processing at a time
 - Completely private and secure
 
 🔧 **Preprocessing Operations**
+
 - Text case transformations (uppercase, lowercase, title case)
 - Character removal and replacement
 - Duplicate row removal
@@ -18,11 +20,13 @@ A modern, browser-based data preprocessing application built with **Next.js** an
 - Date format conversion
 
 📁 **File Support**
+
 - Excel files (.xlsx, .xls)
 - CSV files (.csv)
 - Automatic parsing and display
 
 📊 **Data Preview**
+
 - Interactive data table with pagination
 - Search functionality
 - Column selection for operations
@@ -31,7 +35,8 @@ A modern, browser-based data preprocessing application built with **Next.js** an
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - npm or yarn
 
 ### Installation
@@ -130,6 +135,7 @@ All data processing happens entirely in the browser. No data is stored on any se
 ## Browser Support
 
 Works with all modern browsers supporting:
+
 - ES2020+
 - Web Workers (for future enhancements)
 - Local Storage (optional, for future enhancements)

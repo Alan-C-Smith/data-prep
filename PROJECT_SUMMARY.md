@@ -7,6 +7,7 @@
 Your data preprocessing application has been **successfully converted from Vite + Express + PostgreSQL to Next.js with 100% client-side processing**.
 
 #### Key Achievements:
+
 ✅ Removed all backend dependencies (Express, PostgreSQL, Drizzle ORM)  
 ✅ Removed all server infrastructure  
 ✅ Converted to Next.js 15 with App Router  
@@ -14,7 +15,7 @@ Your data preprocessing application has been **successfully converted from Vite 
 ✅ Zero database or server-side storage  
 ✅ Single document processing model  
 ✅ Full feature parity with original application  
-✅ Production-ready build passing all checks  
+✅ Production-ready build passing all checks
 
 ---
 
@@ -60,23 +61,24 @@ data-prep/
 
 ## Technology Stack
 
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| **Framework** | Next.js | 15.5.11 |
-| **Runtime** | React | 18.3.1 |
-| **Language** | TypeScript | 5.6.3 |
-| **Styling** | Tailwind CSS | 3.4.17 |
-| **UI Components** | Shadcn/ui | Latest |
-| **Animations** | Framer Motion | 11.18.2 |
-| **File Parsing** | XLSX | 0.18.5 |
-| **Date Handling** | date-fns | 3.6.0 |
-| **Dropzone** | React Dropzone | 14.3.8 |
+| Layer             | Technology     | Version |
+| ----------------- | -------------- | ------- |
+| **Framework**     | Next.js        | 15.5.11 |
+| **Runtime**       | React          | 18.3.1  |
+| **Language**      | TypeScript     | 5.6.3   |
+| **Styling**       | Tailwind CSS   | 3.4.17  |
+| **UI Components** | Shadcn/ui      | Latest  |
+| **Animations**    | Framer Motion  | 11.18.2 |
+| **File Parsing**  | XLSX           | 0.18.5  |
+| **Date Handling** | date-fns       | 3.6.0   |
+| **Dropzone**      | React Dropzone | 14.3.8  |
 
 ---
 
 ## What Changed
 
 ### Removed (Old Stack)
+
 - ❌ Express.js server
 - ❌ PostgreSQL database
 - ❌ Drizzle ORM
@@ -87,6 +89,7 @@ data-prep/
 - ❌ Backend server files
 
 ### Added (New Stack)
+
 - ✅ Next.js App Router
 - ✅ Client-side state management with React hooks
 - ✅ In-memory file processing
@@ -99,6 +102,7 @@ data-prep/
 ## Features
 
 ### ✅ All Original Features Preserved
+
 - File upload (Excel and CSV)
 - Data preview with pagination
 - Search functionality
@@ -113,6 +117,7 @@ data-prep/
 - Toast notifications
 
 ### ✨ New Benefits
+
 - **Complete Privacy**: No data sent to servers
 - **Instant Processing**: No network latency
 - **No Backend Required**: Simplify deployment
@@ -125,6 +130,7 @@ data-prep/
 ## Running the Application
 
 ### Development
+
 ```bash
 npm install
 npm run dev
@@ -132,6 +138,7 @@ npm run dev
 ```
 
 ### Production
+
 ```bash
 npm run build
 npm start
@@ -139,11 +146,13 @@ npm start
 ```
 
 ### Type Checking
+
 ```bash
 npm run check
 ```
 
 ### Linting
+
 ```bash
 npm run lint
 ```
@@ -153,20 +162,24 @@ npm run lint
 ## Deployment Options
 
 ### 1. **Vercel (Recommended)**
+
 ```bash
 npx vercel
 ```
+
 - Automatic deployments from Git
 - Serverless functions (if needed in future)
 - Built-in monitoring and analytics
 
 ### 2. **Netlify**
+
 ```bash
 npm run build
 netlify deploy --prod --dir=.next
 ```
 
 ### 3. **Traditional Hosting**
+
 ```bash
 npm run build
 # Deploy .next and public folders
@@ -174,10 +187,12 @@ npm run build
 ```
 
 ### 4. **Static Export** (Future Option)
+
 The app can be configured for static export if needed:
+
 ```javascript
 // next.config.ts
-export const output = 'export';
+export const output = "export";
 ```
 
 ---
@@ -206,17 +221,17 @@ export const output = 'export';
 
 ## Files Reference
 
-| File | Purpose |
-|------|---------|
-| `app/page.tsx` | Main application page |
-| `app/layout.tsx` | Root layout with metadata |
-| `app/providers.tsx` | Context providers setup |
-| `app/hooks/use-file.ts` | File state management |
-| `app/lib/schema.ts` | TypeScript type definitions |
-| `package.json` | Dependencies and scripts |
-| `tsconfig.json` | TypeScript configuration |
-| `tailwind.config.ts` | Tailwind CSS settings |
-| `next.config.ts` | Next.js configuration |
+| File                    | Purpose                     |
+| ----------------------- | --------------------------- |
+| `app/page.tsx`          | Main application page       |
+| `app/layout.tsx`        | Root layout with metadata   |
+| `app/providers.tsx`     | Context providers setup     |
+| `app/hooks/use-file.ts` | File state management       |
+| `app/lib/schema.ts`     | TypeScript type definitions |
+| `package.json`          | Dependencies and scripts    |
+| `tsconfig.json`         | TypeScript configuration    |
+| `tailwind.config.ts`    | Tailwind CSS settings       |
+| `next.config.ts`        | Next.js configuration       |
 
 ---
 
@@ -226,6 +241,7 @@ This application **requires NO environment variables**.
 All processing happens client-side.
 
 If you need env vars in the future, add to `.env.local`:
+
 ```bash
 NEXT_PUBLIC_API_URL=https://example.com  # if you add a backend
 ```
@@ -282,7 +298,7 @@ If you want to add features in the future:
 ✅ **Status**: Conversion Complete  
 ✅ **Build**: Successful  
 ✅ **Tests**: All checks passing  
-✅ **Ready**: For production deployment  
+✅ **Ready**: For production deployment
 
 Your application is now a modern, client-side first Next.js application with zero backend dependencies. All data processing happens securely in the user's browser.
 
