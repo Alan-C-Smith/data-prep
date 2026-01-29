@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChevronLeft, ChevronRight, Search, Pencil, Check, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Pencil, Check, X, Trash2 } from 'lucide-react';
 
 interface DataTableProps {
   data: any[];
@@ -11,9 +11,10 @@ interface DataTableProps {
   columnOrder?: string[];
   columnRenames?: Record<string, string>;
   onRenameColumn?: (originalName: string, newName: string) => void;
+  onDeleteColumn?: (columnName: string) => void;
 }
 
-export function DataTable({ data, onColumnSelect, selectedColumns, columnOrder, columnRenames = {}, onRenameColumn }: DataTableProps) {
+export function DataTable({ data, onColumnSelect, selectedColumns, columnOrder, columnRenames = {}, onRenameColumn, onDeleteColumn }: DataTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
@@ -108,7 +109,7 @@ export function DataTable({ data, onColumnSelect, selectedColumns, columnOrder, 
                       }`}
                       title="Click to select/deselect column"
                     >
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center justify-between gap-1 min-w-0">
                         {isEditing ? (
                           <input
                             autoFocus
@@ -116,13 +117,13 @@ export function DataTable({ data, onColumnSelect, selectedColumns, columnOrder, 
                             value={editValue}
                             onChange={(e) => setEditValue(e.target.value)}
                             onClick={(e) => e.stopPropagation()}
-                            className="flex-1 px-2 py-1 text-sm bg-background border border-primary rounded"
+                            className="w-24 px-2 py-1 text-sm bg-background border border-primary rounded flex-shrink-0"
                           />
                         ) : (
-                          <span onClick={() => onColumnSelect?.(header)}>{displayName}</span>
+                          <span onClick={() => onColumnSelect?.(header)} className="truncate">{displayName}</span>
                         )}
                         {onRenameColumn && (
-                          <div className="hidden group-hover:flex gap-1">
+                          <div className="flex gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                             {isEditing ? (
                               <>
                                 <button
@@ -133,27 +134,38 @@ export function DataTable({ data, onColumnSelect, selectedColumns, columnOrder, 
                                   className="p-1 rounded hover:bg-primary/20"
                                   title="Save"
                                 >
-                                  <Check className="w-3 h-3" />
+                                  <Check className="w-3 h-3 flex-shrink-0" />
                                 </button>
                                 <button
                                   onClick={() => setEditingColumn(null)}
                                   className="p-1 rounded hover:bg-destructive/20"
                                   title="Cancel"
                                 >
-                                  <X className="w-3 h-3" />
+                                  <X className="w-3 h-3 flex-shrink-0" />
                                 </button>
                               </>
                             ) : (
-                              <button
-                                onClick={() => {
-                                  setEditingColumn(header);
-                                  setEditValue(displayName);
-                                }}
-                                className="p-1 rounded hover:bg-muted"
-                                title="Rename column"
-                              >
-                                <Pencil className="w-3 h-3" />
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setEditingColumn(header);
+                                    setEditValue(displayName);
+                                  }}
+                                  className="p-1 rounded hover:bg-muted"
+                                  title="Rename column"
+                                >
+                                  <Pencil className="w-3 h-3 flex-shrink-0" />
+                                </button>
+                                {onDeleteColumn && (
+                                  <button
+                                    onClick={() => onDeleteColumn(header)}
+                                    className="p-1 rounded hover:bg-destructive/20"
+                                    title="Delete column"
+                                  >
+                                    <Trash2 className="w-3 h-3 flex-shrink-0 text-destructive" />
+                                  </button>
+                                )}
+                              </>
                             )}
                           </div>
                         )}

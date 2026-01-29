@@ -187,6 +187,43 @@ export default function Home() {
     return columnRenames[columnName] || columnName;
   };
 
+  const handleDeleteColumn = (columnName: string) => {
+    if (!currentFile) return;
+
+    // Remove column from all rows
+    const newData = currentFile.data.map((row) => {
+      const newRow = { ...row };
+      delete newRow[columnName];
+      return newRow;
+    });
+
+    // Remove from columnOrder
+    const newColumnOrder = currentFile.columnOrder.filter((col) => col !== columnName);
+
+    // Remove from columnRenames
+    const newRenames = { ...columnRenames };
+    delete newRenames[columnName];
+
+    // Remove from selected columns
+    const newSelected = new Set(selectedColumns);
+    newSelected.delete(columnName);
+
+    setCurrentFile({
+      ...currentFile,
+      data: newData,
+      columnOrder: newColumnOrder,
+    });
+    setColumnRenames(newRenames);
+    setSelectedColumns(newSelected);
+    setHistory([newData]);
+    setHistoryIndex(0);
+
+    toast({
+      title: 'Column deleted',
+      description: `Column "${getDisplayName(columnName)}" has been removed.`,
+    });
+  };
+
   const handleUndo = () => {
     if (historyIndex > 0 && currentFile) {
       const newIndex = historyIndex - 1;
@@ -404,6 +441,7 @@ export default function Home() {
                   columnOrder={currentFile.columnOrder}
                   columnRenames={columnRenames}
                   onRenameColumn={handleRenameColumn}
+                  onDeleteColumn={handleDeleteColumn}
                 />
               </motion.div>
 
@@ -419,6 +457,8 @@ export default function Home() {
                   selectedColumns={selectedColumns}
                   onColumnSelect={handleColumnToggle}
                   onApply={handlePreprocess}
+                  columnRenames={columnRenames}
+                  getDisplayName={getDisplayName}
                 />
               </motion.div>
             </div>

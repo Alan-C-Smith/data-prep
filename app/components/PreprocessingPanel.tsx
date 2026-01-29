@@ -30,6 +30,8 @@ interface PreprocessingPanelProps {
   selectedColumns?: Set<string>;
   onColumnSelect?: (column: string) => void;
   onApply: (action: PreprocessingAction) => void;
+  columnRenames?: Record<string, string>;
+  getDisplayName?: (columnName: string) => string;
 }
 
 type OperationType =
@@ -48,6 +50,8 @@ export function PreprocessingPanel({
   selectedColumns,
   onColumnSelect,
   onApply,
+  columnRenames = {},
+  getDisplayName = (name) => name,
 }: PreprocessingPanelProps) {
   const { toast } = useToast();
   const [isPending, setIsPending] = useState(false);
@@ -235,7 +239,7 @@ export function PreprocessingPanel({
               onCheckedChange={() => handleColumnSelect(col)}
             />
             <label htmlFor={`col-${col}`} className="text-sm cursor-pointer truncate flex-1">
-              {col}
+              {getDisplayName(col)}
             </label>
           </div>
         ))}
@@ -260,7 +264,7 @@ export function PreprocessingPanel({
             <SelectTrigger className="bg-background">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-card border-border">
               <SelectGroup className="py-2 border-b border-border">
                 <SelectLabel className="text-xs font-bold text-primary uppercase tracking-wider px-2 py-1 bg-primary/5 rounded mb-1">📝 Text Case</SelectLabel>
                 <SelectItem value="capitalize">Capitalize (UPPERCASE)</SelectItem>

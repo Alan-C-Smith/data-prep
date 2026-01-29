@@ -32,11 +32,11 @@ export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps)
       try {
         const buffer = await file.arrayBuffer();
         const XLSX = await import('xlsx');
-        const workbook = XLSX.read(buffer, { type: 'buffer', raw: false });
+        const workbook = XLSX.read(buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         const data = XLSX.utils.sheet_to_json(sheet);
-        
+
         // Get column order from the sheet range
         const columnOrder: string[] = [];
         if (data.length > 0) {
