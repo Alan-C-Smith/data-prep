@@ -9,7 +9,7 @@ import { PreprocessingPanel } from '@/components/PreprocessingPanel';
 import { useToast } from '@/hooks/use-toast';
 import type { FileRecord, PreprocessingAction } from '@/lib/schema';
 import { format, parseISO, isValid } from 'date-fns';
-import { Loader2, FileQuestion, RotateCcw, RotateCw } from 'lucide-react';
+import { Loader2, FileQuestion, RotateCcw, RotateCw, RotateCcw as RefreshCw } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,21 +17,32 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Download } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function Home() {
   const [currentFile, setCurrentFile] = useState<FileRecord | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
-  const [history, setHistory] = useState<any[][]>([]);
+  const [history, setHistory] = useState<Array<{ data: any[]; columnOrder: string[] }>>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [columnRenames, setColumnRenames] = useState<Record<string, string>>({});
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [showNewFileDialog, setShowNewFileDialog] = useState(false);
   const { toast } = useToast();
 
   const handleFileUpload = (file: FileRecord) => {
     setCurrentFile(file);
     setSelectedColumns(new Set());
     setColumnRenames({});
-    setHistory([JSON.parse(JSON.stringify(file.data))]);
+    setHistory([{ data: JSON.parse(JSON.stringify(file.data)), columnOrder: file.columnOrder }]);
     setHistoryIndex(0);
   };
 
@@ -151,7 +162,7 @@ export default function Home() {
 
       // Update history - remove any future states if we're not at the end
       const newHistory = history.slice(0, historyIndex + 1);
-      newHistory.push(newData);
+      newHistory.push({ data: newData, columnOrder: currentFile.columnOrder });
       setHistory(newHistory);
       setHistoryIndex(newHistory.length - 1);
 
@@ -165,6 +176,33 @@ export default function Home() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleReset = () => {
+    if (!currentFile || history.length === 0) return;
+    
+    const originalState = history[0];
+    setCurrentFile({
+      ...currentFile,
+      data: JSON.parse(JSON.stringify(originalState.data)),
+      columnOrder: originalState.columnOrder,
+    });
+    setHistoryIndex(0);
+    setSelectedColumns(new Set());
+    setColumnRenames({});
+    
+    toast({
+      title: 'Data reset',
+      description: 'Table reverted to original state.',
+    });
+  };
+
+  const handleNewFile = () => {
+    setCurrentFile(null);
+    setSelectedColumns(new Set());
+    setColumnRenames({});
+    setHistory([]);
+    setHistoryIndex(-1);
   };
 
   const handleClearFile = () => {
@@ -208,6 +246,12 @@ export default function Home() {
     const newSelected = new Set(selectedColumns);
     newSelected.delete(columnName);
 
+    // Add to history properly (like handlePreprocess does)
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push({ data: newData, columnOrder: newColumnOrder });
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+
     setCurrentFile({
       ...currentFile,
       data: newData,
@@ -215,8 +259,6 @@ export default function Home() {
     });
     setColumnRenames(newRenames);
     setSelectedColumns(newSelected);
-    setHistory([newData]);
-    setHistoryIndex(0);
 
     toast({
       title: 'Column deleted',
@@ -227,10 +269,12 @@ export default function Home() {
   const handleUndo = () => {
     if (historyIndex > 0 && currentFile) {
       const newIndex = historyIndex - 1;
+      const previousState = history[newIndex];
       setHistoryIndex(newIndex);
       setCurrentFile({
         ...currentFile,
-        data: JSON.parse(JSON.stringify(history[newIndex])),
+        data: JSON.parse(JSON.stringify(previousState.data)),
+        columnOrder: previousState.columnOrder,
       });
     }
   };
@@ -238,10 +282,12 @@ export default function Home() {
   const handleRedo = () => {
     if (historyIndex < history.length - 1 && currentFile) {
       const newIndex = historyIndex + 1;
+      const nextState = history[newIndex];
       setHistoryIndex(newIndex);
       setCurrentFile({
         ...currentFile,
-        data: JSON.parse(JSON.stringify(history[newIndex])),
+        data: JSON.parse(JSON.stringify(nextState.data)),
+        columnOrder: nextState.columnOrder,
       });
     }
   };
@@ -399,6 +445,14 @@ export default function Home() {
                 >
                   <RotateCw className="w-4 h-4" />
                 </button>
+                <button
+                  onClick={() => setShowResetDialog(true)}
+                  className="px-4 py-2 rounded-lg border border-border font-medium hover:bg-muted transition-colors flex items-center gap-2"
+                  title="Revert to original data"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Reset
+                </button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center gap-2">
@@ -416,10 +470,10 @@ export default function Home() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <button
-                  onClick={handleClearFile}
+                  onClick={() => setShowNewFileDialog(true)}
                   className="px-4 py-2 rounded-lg bg-destructive/10 text-destructive font-medium hover:bg-destructive/20 transition-colors"
                 >
-                  Clear
+                  New File
                 </button>
               </div>
             </motion.div>
@@ -465,6 +519,54 @@ export default function Home() {
           </>
         )}
       </main>
+
+      {/* Reset Confirmation Dialog */}
+      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset table to original?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will revert all changes and restore the table to its original state. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-3 justify-end">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                handleReset();
+                setShowResetDialog(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Reset
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* New File Confirmation Dialog */}
+      <AlertDialog open={showNewFileDialog} onOpenChange={setShowNewFileDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you're finished?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to load a new file. Make sure you've exported your data if you want to keep it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-3 justify-end">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                handleNewFile();
+                setShowNewFileDialog(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Load New File
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
