@@ -77,19 +77,13 @@ export function PreprocessingPanel({
 
   const handleSelectAllChange = (checked: boolean) => {
     if (checked) {
-      // Select all columns
-      columns.forEach((col) => {
-        if (!currentSelectedColumns.has(col)) {
-          handleColumnSelect(col);
-        }
-      });
-      setSelectAll(true);
+      // Select all columns that aren't already selected
+      const columnsToSelect = columns.filter((col) => !currentSelectedColumns.has(col));
+      columnsToSelect.forEach((col) => handleColumnSelect(col));
     } else {
       // Deselect all columns
-      Array.from(currentSelectedColumns).forEach((col) => {
-        handleColumnSelect(col);
-      });
-      setSelectAll(false);
+      const columnsToDeselect = Array.from(currentSelectedColumns);
+      columnsToDeselect.forEach((col) => handleColumnSelect(col));
     }
   };
 
@@ -221,26 +215,26 @@ export function PreprocessingPanel({
 
   const columnSelectionUI = (
     <div className="space-y-3">
-      <div className="flex items-center space-x-2 p-2 border rounded-lg bg-muted/50">
+      <div className="flex items-center space-x-2 p-3 border border-primary/30 rounded-lg bg-primary/5">
         <Checkbox
           id="select-all"
-          checked={selectAll || currentSelectedColumns.size === columns.length}
+          checked={currentSelectedColumns.size === columns.length && columns.length > 0}
           onCheckedChange={handleSelectAllChange}
         />
-        <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
-          Select All Columns
+        <label htmlFor="select-all" className="text-sm font-semibold cursor-pointer text-primary">
+          Select All Columns ({currentSelectedColumns.size}/{columns.length})
         </label>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded-lg">
+      <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded-lg bg-card">
         {columns.map((col) => (
-          <div key={col} className="flex items-center space-x-2">
+          <div key={col} className="flex items-center space-x-2 hover:bg-muted/50 p-1 rounded transition-colors">
             <Checkbox
               id={`col-${col}`}
               checked={currentSelectedColumns.has(col)}
               onCheckedChange={() => handleColumnSelect(col)}
             />
-            <label htmlFor={`col-${col}`} className="text-sm cursor-pointer truncate">
+            <label htmlFor={`col-${col}`} className="text-sm cursor-pointer truncate flex-1">
               {col}
             </label>
           </div>
@@ -267,27 +261,27 @@ export function PreprocessingPanel({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectGroup>
-                <SelectLabel>Text Case</SelectLabel>
+              <SelectGroup className="py-2 border-b border-border">
+                <SelectLabel className="text-xs font-bold text-primary uppercase tracking-wider px-2 py-1 bg-primary/5 rounded mb-1">📝 Text Case</SelectLabel>
                 <SelectItem value="capitalize">Capitalize (UPPERCASE)</SelectItem>
                 <SelectItem value="lowercase">Lowercase (lowercase)</SelectItem>
                 <SelectItem value="capitalizeFirst">Capitalize First Letter (Title Case)</SelectItem>
               </SelectGroup>
 
-              <SelectGroup>
-                <SelectLabel>Remove / Replace</SelectLabel>
+              <SelectGroup className="py-2 border-b border-border">
+                <SelectLabel className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider px-2 py-1 bg-blue-50 dark:bg-blue-950/30 rounded mb-1">🔄 Remove / Replace</SelectLabel>
                 <SelectItem value="removeCharacters">Remove Characters</SelectItem>
                 <SelectItem value="replaceCharacters">Replace Characters</SelectItem>
               </SelectGroup>
 
-              <SelectGroup>
-                <SelectLabel>Deduplication & Removal</SelectLabel>
+              <SelectGroup className="py-2 border-b border-border">
+                <SelectLabel className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider px-2 py-1 bg-purple-50 dark:bg-purple-950/30 rounded mb-1">🎯 Deduplication & Removal</SelectLabel>
                 <SelectItem value="removeDuplicates">Remove Duplicates</SelectItem>
                 <SelectItem value="removeRows">Remove Rows</SelectItem>
               </SelectGroup>
 
-              <SelectGroup>
-                <SelectLabel>Date Conversion</SelectLabel>
+              <SelectGroup className="py-2">
+                <SelectLabel className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider px-2 py-1 bg-orange-50 dark:bg-orange-950/30 rounded mb-1">📅 Date Conversion</SelectLabel>
                 <SelectItem value="convertDate">Convert Date Format</SelectItem>
               </SelectGroup>
             </SelectContent>

@@ -22,6 +22,7 @@ export interface FileRecord {
   mimeType: string;
   size: number;
   data: Record<string, any>[];
+  columnOrder: string[];
   createdAt: Date;
 }
 

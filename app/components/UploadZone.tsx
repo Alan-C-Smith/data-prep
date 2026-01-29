@@ -32,10 +32,29 @@ export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps)
       try {
         const buffer = await file.arrayBuffer();
         const XLSX = await import('xlsx');
-        const workbook = XLSX.read(buffer, { type: 'buffer' });
+        const workbook = XLSX.read(buffer, { type: 'buffer', raw: false });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         const data = XLSX.utils.sheet_to_json(sheet);
+        
+        // Get column order from the sheet range
+        const columnOrder: string[] = [];
+        if (data.length > 0) {
+          const firstRow = data[0] as Record<string, any>;
+          // Iterate through sheet in order to get actual column sequence
+          const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+          for (let col = range.s.c; col <= range.e.c; col++) {
+            const cellAddress = XLSX.utils.encode_col(col) + '1';
+            const cell = sheet[cellAddress];
+            if (cell && cell.v) {
+              columnOrder.push(String(cell.v));
+            }
+          }
+          // Fallback to Object.keys if the above didn't work
+          if (columnOrder.length === 0) {
+            columnOrder.push(...Object.keys(firstRow));
+          }
+        }
 
         // Simple ID generator
         const fileId = Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -47,6 +66,7 @@ export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps)
           mimeType: file.type,
           size: file.size,
           data: data as Record<string, any>[],
+          columnOrder: columnOrder,
           createdAt: new Date(),
         };
 

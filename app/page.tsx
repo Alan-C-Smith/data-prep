@@ -9,17 +9,30 @@ import { PreprocessingPanel } from '@/components/PreprocessingPanel';
 import { useToast } from '@/hooks/use-toast';
 import type { FileRecord, PreprocessingAction } from '@/lib/schema';
 import { format, parseISO, isValid } from 'date-fns';
-import { Loader2, FileQuestion } from 'lucide-react';
+import { Loader2, FileQuestion, RotateCcw, RotateCw } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Download } from 'lucide-react';
 
 export default function Home() {
   const [currentFile, setCurrentFile] = useState<FileRecord | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
+  const [history, setHistory] = useState<any[][]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [columnRenames, setColumnRenames] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   const handleFileUpload = (file: FileRecord) => {
     setCurrentFile(file);
     setSelectedColumns(new Set());
+    setColumnRenames({});
+    setHistory([JSON.parse(JSON.stringify(file.data))]);
+    setHistoryIndex(0);
   };
 
   const handleColumnToggle = (column: string) => {
@@ -37,7 +50,8 @@ export default function Home() {
 
     try {
       setIsProcessing(true);
-      let newData = JSON.parse(JSON.stringify(currentFile.data));
+      const currentData = currentFile.data;
+      let newData = JSON.parse(JSON.stringify(currentData));
 
       switch (action.type) {
         case 'capitalize':
@@ -135,10 +149,19 @@ export default function Home() {
           break;
       }
 
+      // Update history - remove any future states if we're not at the end
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newData);
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+
       setCurrentFile({
         ...currentFile,
         data: newData,
       });
+
+      // Reset selected columns after successful operation
+      setSelectedColumns(new Set());
     } finally {
       setIsProcessing(false);
     }
@@ -147,21 +170,84 @@ export default function Home() {
   const handleClearFile = () => {
     setCurrentFile(null);
     setSelectedColumns(new Set());
+    setColumnRenames({});
   };
 
-  const handleDownload = async () => {
+  const handleRenameColumn = (originalName: string, newName: string) => {
+    if (newName.trim() === '' || newName === originalName) {
+      const newRenames = { ...columnRenames };
+      delete newRenames[originalName];
+      setColumnRenames(newRenames);
+      return;
+    }
+    setColumnRenames({ ...columnRenames, [originalName]: newName });
+  };
+
+  const getDisplayName = (columnName: string) => {
+    return columnRenames[columnName] || columnName;
+  };
+
+  const handleUndo = () => {
+    if (historyIndex > 0 && currentFile) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setCurrentFile({
+        ...currentFile,
+        data: JSON.parse(JSON.stringify(history[newIndex])),
+      });
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1 && currentFile) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setCurrentFile({
+        ...currentFile,
+        data: JSON.parse(JSON.stringify(history[newIndex])),
+      });
+    }
+  };
+
+  const handleExport = async (format: 'xlsx' | 'csv') => {
     if (!currentFile) return;
 
     try {
-      const XLSX = await import('xlsx');
-      const ws = XLSX.utils.json_to_sheet(currentFile.data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Data');
-      XLSX.writeFile(wb, `${currentFile.originalName}`);
+      if (format === 'xlsx') {
+        const XLSX = await import('xlsx');
+        const ws = XLSX.utils.json_to_sheet(currentFile.data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Data');
+        XLSX.writeFile(wb, currentFile.originalName.replace(/\.\w+$/, '.xlsx'));
+      } else {
+        // CSV export
+        const headers = Object.keys(currentFile.data[0] || {});
+        const csvContent = [
+          headers.join(','),
+          ...currentFile.data.map((row: any) =>
+            headers.map((header) => {
+              const value = row[header];
+              if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                return `"${String(value).replace(/"/g, '""')}"`;
+              }
+              return value;
+            }).join(',')
+          ),
+        ].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', currentFile.originalName.replace(/\.\w+$/, '.csv'));
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     } catch (error) {
       toast({
-        title: 'Download failed',
-        description: 'Could not download file',
+        title: 'Export failed',
+        description: 'Could not export file',
         variant: 'destructive',
       });
     }
@@ -261,11 +347,37 @@ export default function Home() {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={handleDownload}
-                  className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+                  onClick={handleUndo}
+                  disabled={historyIndex <= 0}
+                  className="p-2 rounded-lg border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+                  title="Undo (Ctrl+Z)"
                 >
-                  Download
+                  <RotateCcw className="w-4 h-4" />
                 </button>
+                <button
+                  onClick={handleRedo}
+                  disabled={historyIndex >= history.length - 1}
+                  className="p-2 rounded-lg border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+                  title="Redo (Ctrl+Y)"
+                >
+                  <RotateCw className="w-4 h-4" />
+                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center gap-2">
+                      <Download className="w-4 h-4" />
+                      Export
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleExport('xlsx')}>
+                      Export as Excel (.xlsx)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport('csv')}>
+                      Export as CSV (.csv)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <button
                   onClick={handleClearFile}
                   className="px-4 py-2 rounded-lg bg-destructive/10 text-destructive font-medium hover:bg-destructive/20 transition-colors"
@@ -285,7 +397,14 @@ export default function Home() {
                 className="lg:col-span-2"
               >
                 <h3 className="text-lg font-semibold text-foreground mb-4">Data Preview</h3>
-                <DataTable data={currentFile.data} onColumnSelect={handleColumnToggle} selectedColumns={selectedColumns} />
+                <DataTable
+                  data={currentFile.data}
+                  onColumnSelect={handleColumnToggle}
+                  selectedColumns={selectedColumns}
+                  columnOrder={currentFile.columnOrder}
+                  columnRenames={columnRenames}
+                  onRenameColumn={handleRenameColumn}
+                />
               </motion.div>
 
               {/* Preprocessing Panel */}
