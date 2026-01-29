@@ -32,6 +32,8 @@ interface PreprocessingPanelProps {
   onApply: (action: PreprocessingAction) => void;
   columnRenames?: Record<string, string>;
   getDisplayName?: (columnName: string) => string;
+  searchTerm?: string;
+  columnOrder?: string[];
 }
 
 type OperationType =
@@ -44,6 +46,39 @@ type OperationType =
   | 'removeRows'
   | 'convertDate';
 
+// Helper function to parse row indices from a string supporting ranges and commas
+function parseRowIndices(input: string, maxIndex: number): number[] {
+  const indices = new Set<number>();
+  const parts = input.split(',').map((s) => s.trim());
+
+  for (const part of parts) {
+    if (!part) continue;
+
+    // Check if it's a range (e.g., "0-4")
+    if (part.includes('-')) {
+      const [startStr, endStr] = part.split('-').map((s) => s.trim());
+      const start = parseInt(startStr);
+      const end = parseInt(endStr);
+
+      if (!isNaN(start) && !isNaN(end)) {
+        const min = Math.min(start, end);
+        const max = Math.max(start, end);
+        for (let i = min; i <= max && i < maxIndex; i++) {
+          indices.add(i);
+        }
+      }
+    } else {
+      // Single index
+      const num = parseInt(part);
+      if (!isNaN(num) && num < maxIndex) {
+        indices.add(num);
+      }
+    }
+  }
+
+  return Array.from(indices).sort((a, b) => a - b);
+}
+
 export function PreprocessingPanel({
   columns,
   data,
@@ -52,6 +87,8 @@ export function PreprocessingPanel({
   onApply,
   columnRenames = {},
   getDisplayName = (name) => name,
+  searchTerm = '',
+  columnOrder = [],
 }: PreprocessingPanelProps) {
   const { toast } = useToast();
   const [isPending, setIsPending] = useState(false);
@@ -63,6 +100,7 @@ export function PreprocessingPanel({
   const [findStr, setFindStr] = useState('');
   const [replaceStr, setReplaceStr] = useState('');
   const [rowIndices, setRowIndices] = useState('');
+  const [useFilteredRows, setUseFilteredRows] = useState(false);
   const [dateFormat, setDateFormat] = useState('yyyy-MM-dd');
 
   // Use provided selectedColumns or fall back to internal state
@@ -127,23 +165,23 @@ export function PreprocessingPanel({
     }
 
     if (operation === 'removeRows') {
-      if (!rowIndices) {
+      if (!useFilteredRows && !rowIndices) {
         toast({
-          title: 'Please specify row indices',
+          title: 'Please specify row indices or use filtered rows',
           variant: 'destructive',
         });
         return;
       }
-      const indices = rowIndices
-        .split(',')
-        .map((s) => parseInt(s.trim()))
-        .filter((n) => !isNaN(n));
-      if (indices.length === 0) {
-        toast({
-          title: 'Invalid row indices',
-          variant: 'destructive',
-        });
-        return;
+
+      if (!useFilteredRows) {
+        const indices = parseRowIndices(rowIndices, data.length);
+        if (indices.length === 0) {
+          toast({
+            title: 'Invalid row indices',
+            variant: 'destructive',
+          });
+          return;
+        }
       }
     }
 
@@ -178,11 +216,23 @@ export function PreprocessingPanel({
         payload = { type: 'removeDuplicates', columns: columnsToApply };
         break;
       case 'removeRows':
-        const indices = rowIndices
-          .split(',')
-          .map((s) => parseInt(s.trim()))
-          .filter((n) => !isNaN(n));
-        payload = { type: 'removeRows', indices };
+        if (useFilteredRows) {
+          // Get indices of rows that match the search filter
+          const headers = columnOrder && columnOrder.length > 0 ? columnOrder : Object.keys(data[0] || {});
+          const filteredIndices: number[] = [];
+          data.forEach((row, idx) => {
+            const matchesFilter = headers.some((header) =>
+              String(row[header]).toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            if (matchesFilter) {
+              filteredIndices.push(idx);
+            }
+          });
+          payload = { type: 'removeRows', indices: filteredIndices };
+        } else {
+          const indices = parseRowIndices(rowIndices, data.length);
+          payload = { type: 'removeRows', indices };
+        }
         break;
       case 'convertDate':
         payload = {
@@ -341,15 +391,44 @@ export function PreprocessingPanel({
         )}
 
         {operation === 'removeRows' && (
-          <div className="space-y-2">
-            <label className="text-sm font-semibold">Row Indices to Remove</label>
-            <Textarea
-              placeholder="Enter row indices separated by commas (e.g., 0, 2, 5)"
-              value={rowIndices}
-              onChange={(e) => setRowIndices(e.target.value)}
-              className="font-mono text-xs"
-              rows={3}
-            />
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="useFilteredRows"
+                checked={useFilteredRows}
+                onCheckedChange={(checked) => setUseFilteredRows(checked as boolean)}
+              />
+              <label htmlFor="useFilteredRows" className="text-sm font-semibold cursor-pointer">
+                Remove rows matching search filter
+              </label>
+            </div>
+
+            {useFilteredRows ? (
+              <div className="p-3 bg-muted/50 rounded-lg border border-border">
+                <p className="text-xs text-muted-foreground">
+                  This will remove all rows that match the current search term.
+                </p>
+                {searchTerm && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Current search: <span className="font-mono font-bold">{searchTerm}</span>
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Row Indices to Remove</label>
+                <Textarea
+                  placeholder="Examples:&#10;- Single: 0, 2, 5&#10;- Range: 0-4 (removes 0,1,2,3,4)&#10;- Mixed: 0-4, 10, 15-20"
+                  value={rowIndices}
+                  onChange={(e) => setRowIndices(e.target.value)}
+                  className="font-mono text-xs"
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Supports: comma-separated (0, 5, 10), ranges (0-4), or both (0-4, 10, 15-20)
+                </p>
+              </div>
+            )}
           </div>
         )}
 

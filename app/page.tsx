@@ -36,6 +36,7 @@ export default function Home() {
   const [columnRenames, setColumnRenames] = useState<Record<string, string>>({});
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showNewFileDialog, setShowNewFileDialog] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
   const handleFileUpload = (file: FileRecord) => {
@@ -496,6 +497,7 @@ export default function Home() {
                   columnRenames={columnRenames}
                   onRenameColumn={handleRenameColumn}
                   onDeleteColumn={handleDeleteColumn}
+                  onSearchChange={setSearchTerm}
                 />
               </motion.div>
 
@@ -513,6 +515,8 @@ export default function Home() {
                   onApply={handlePreprocess}
                   columnRenames={columnRenames}
                   getDisplayName={getDisplayName}
+                  searchTerm={searchTerm}
+                  columnOrder={currentFile.columnOrder}
                 />
               </motion.div>
             </div>

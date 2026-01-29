@@ -12,14 +12,21 @@ interface DataTableProps {
   columnRenames?: Record<string, string>;
   onRenameColumn?: (originalName: string, newName: string) => void;
   onDeleteColumn?: (columnName: string) => void;
+  onSearchChange?: (searchTerm: string) => void;
 }
 
-export function DataTable({ data, onColumnSelect, selectedColumns, columnOrder, columnRenames = {}, onRenameColumn, onDeleteColumn }: DataTableProps) {
+export function DataTable({ data, onColumnSelect, selectedColumns, columnOrder, columnRenames = {}, onRenameColumn, onDeleteColumn, onSearchChange }: DataTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const itemsPerPage = 10;
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+    onSearchChange?.(value);
+  };
 
   if (!data || data.length === 0) {
     return (
@@ -53,10 +60,7 @@ export function DataTable({ data, onColumnSelect, selectedColumns, columnOrder, 
             type="text"
             placeholder="Search data..."
             value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1); // Reset to first page on search
-            }}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
           />
         </div>
