@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RotateCcw, RotateCw, RefreshCw, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,12 @@ interface PreprocessingPanelProps {
   getDisplayName?: (columnName: string) => string;
   searchTerm?: string;
   columnOrder?: string[];
+  onSearchChange?: (term: string) => void;
+  onReset?: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
 type OperationType =
@@ -83,6 +89,12 @@ export function PreprocessingPanel({
   columns,
   data,
   selectedColumns,
+  onSearchChange,
+  onReset,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
   onColumnSelect,
   onApply,
   columnRenames = {},
@@ -302,55 +314,99 @@ export function PreprocessingPanel({
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Data Preprocessing</CardTitle>
-        <CardDescription>Select operations to transform your data</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Operation Selection */}
-        <div className="space-y-2">
-          <label className="text-sm font-semibold">Operation</label>
-          <Select value={operation} onValueChange={(value: any) => setOperation(value)}>
-            <SelectTrigger className="bg-background">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-card border-border">
-              <SelectGroup className="py-2 border-b border-border">
-                <SelectLabel className="text-xs font-bold text-primary uppercase tracking-wider px-2 py-1 bg-primary/5 rounded mb-1">📝 Text Case</SelectLabel>
-                <SelectItem value="capitalize">Capitalize (UPPERCASE)</SelectItem>
-                <SelectItem value="lowercase">Lowercase (lowercase)</SelectItem>
-                <SelectItem value="capitalizeFirst">Capitalize First Letter (Title Case)</SelectItem>
-              </SelectGroup>
+      <CardHeader className="py-3 px-4">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Search Bar */}
+          <div className="relative group flex-1 min-w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search data..."
+              value={searchTerm}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              className="w-full pl-9 pr-10 py-1.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => onSearchChange?.('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted/50 transition-colors opacity-0 group-hover:opacity-100"
+                title="Clear search"
+              >
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            )}
+          </div>
 
-              <SelectGroup className="py-2 border-b border-border">
-                <SelectLabel className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider px-2 py-1 bg-blue-50 dark:bg-blue-950/30 rounded mb-1">🔄 Remove / Replace</SelectLabel>
-                <SelectItem value="removeCharacters">Remove Characters</SelectItem>
-                <SelectItem value="replaceCharacters">Replace Characters</SelectItem>
-              </SelectGroup>
+          {/* Action Buttons */}
+          <div className="flex gap-1">
+            <button
+              onClick={onUndo}
+              disabled={!canUndo}
+              className="p-1.5 rounded-lg border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+              title="Undo"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onRedo}
+              disabled={!canRedo}
+              className="p-1.5 rounded-lg border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+              title="Redo"
+            >
+              <RotateCw className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onReset}
+              className="p-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
+              title="Reset to original"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
 
-              <SelectGroup className="py-2 border-b border-border">
-                <SelectLabel className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider px-2 py-1 bg-purple-50 dark:bg-purple-950/30 rounded mb-1">🎯 Deduplication & Removal</SelectLabel>
-                <SelectItem value="removeDuplicates">Remove Duplicates</SelectItem>
-                <SelectItem value="removeRows">Remove Rows</SelectItem>
-              </SelectGroup>
+          {/* Operation Selection */}
+          <div className="flex-1 min-w-48">
+            <Select value={operation} onValueChange={(value: any) => setOperation(value)}>
+              <SelectTrigger className="bg-background h-9 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border">
+                <SelectGroup className="py-2 border-b border-border">
+                  <SelectLabel className="text-xs font-bold text-primary uppercase tracking-wider px-2 py-1 bg-primary/5 rounded mb-1">📝 Text Case</SelectLabel>
+                  <SelectItem value="capitalize">Capitalize (UPPERCASE)</SelectItem>
+                  <SelectItem value="lowercase">Lowercase (lowercase)</SelectItem>
+                  <SelectItem value="capitalizeFirst">Capitalize First Letter (Title Case)</SelectItem>
+                </SelectGroup>
 
-              <SelectGroup className="py-2">
-                <SelectLabel className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider px-2 py-1 bg-orange-50 dark:bg-orange-950/30 rounded mb-1">📅 Date Conversion</SelectLabel>
-                <SelectItem value="convertDate">Convert Date Format</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+                <SelectGroup className="py-2 border-b border-border">
+                  <SelectLabel className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider px-2 py-1 bg-blue-50 dark:bg-blue-950/30 rounded mb-1">🔄 Remove / Replace</SelectLabel>
+                  <SelectItem value="removeCharacters">Remove Characters</SelectItem>
+                  <SelectItem value="replaceCharacters">Replace Characters</SelectItem>
+                </SelectGroup>
+
+                <SelectGroup className="py-2 border-b border-border">
+                  <SelectLabel className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider px-2 py-1 bg-purple-50 dark:bg-purple-950/30 rounded mb-1">🎯 Deduplication & Removal</SelectLabel>
+                  <SelectItem value="removeDuplicates">Remove Duplicates</SelectItem>
+                  <SelectItem value="removeRows">Remove Rows</SelectItem>
+                </SelectGroup>
+
+                <SelectGroup className="py-2">
+                  <SelectLabel className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider px-2 py-1 bg-orange-50 dark:bg-orange-950/30 rounded mb-1">📅 Date Conversion</SelectLabel>
+                  <SelectItem value="convertDate">Convert Date Format</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+      </CardHeader>
+      <CardContent className="py-3 px-4 space-y-3">
 
         {/* Column Selection (for operations that require it) */}
         {operation !== 'removeRows' && (
-          <Collapsible defaultOpen className="space-y-2">
+          <Collapsible className="space-y-1">
             <CollapsibleTrigger asChild>
-              <Button variant="outline" className="w-full justify-between">
-                <span className="text-sm font-semibold">Select Columns</span>
-                <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded">
-                  {currentSelectedColumns.size}
-                </span>
+              <Button variant="outline" className="w-full justify-between text-xs h-8 py-1">
+                <span className="font-semibold">Columns ({currentSelectedColumns.size})</span>
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent>{columnSelectionUI}</CollapsibleContent>
@@ -359,8 +415,8 @@ export function PreprocessingPanel({
 
         {/* Operation-specific input fields */}
         {operation === 'removeCharacters' && (
-          <div className="space-y-2">
-            <label className="text-sm font-semibold">Characters to Remove</label>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold">Characters to Remove</label>
             <Input
               placeholder='e.g., "-", " ", ","'
               value={removeChars}
@@ -370,17 +426,17 @@ export function PreprocessingPanel({
         )}
 
         {operation === 'replaceCharacters' && (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Find</label>
+          <div className="space-y-2">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold">Find</label>
               <Input
                 placeholder="Text to find"
                 value={findStr}
                 onChange={(e) => setFindStr(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Replace With</label>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold">Replace With</label>
               <Input
                 placeholder="Replacement text"
                 value={replaceStr}
@@ -391,20 +447,20 @@ export function PreprocessingPanel({
         )}
 
         {operation === 'removeRows' && (
-          <div className="space-y-4">
+          <div className="space-y-2">
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="useFilteredRows"
                 checked={useFilteredRows}
                 onCheckedChange={(checked) => setUseFilteredRows(checked as boolean)}
               />
-              <label htmlFor="useFilteredRows" className="text-sm font-semibold cursor-pointer">
+              <label htmlFor="useFilteredRows" className="text-xs font-semibold cursor-pointer">
                 Remove rows matching search filter
               </label>
             </div>
 
             {useFilteredRows ? (
-              <div className="p-3 bg-muted/50 rounded-lg border border-border">
+              <div className="p-2 bg-muted/50 rounded-lg border border-border">
                 <p className="text-xs text-muted-foreground">
                   This will remove all rows that match the current search term.
                 </p>
@@ -415,8 +471,8 @@ export function PreprocessingPanel({
                 )}
               </div>
             ) : (
-              <div className="space-y-2">
-                <label className="text-sm font-semibold">Row Indices to Remove</label>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold">Row Indices to Remove</label>
                 <Textarea
                   placeholder="Examples:&#10;- Single: 0, 2, 5&#10;- Range: 0-4 (removes 0,1,2,3,4)&#10;- Mixed: 0-4, 10, 15-20"
                   value={rowIndices}
@@ -433,8 +489,8 @@ export function PreprocessingPanel({
         )}
 
         {operation === 'convertDate' && (
-          <div className="space-y-2">
-            <label className="text-sm font-semibold">Date Format</label>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold">Date Format</label>
             <Select value={dateFormat} onValueChange={setDateFormat}>
               <SelectTrigger className="bg-background">
                 <SelectValue />
@@ -451,14 +507,14 @@ export function PreprocessingPanel({
         )}
 
         {/* Apply Button */}
-        <Button onClick={handleApply} disabled={isPending} className="w-full" size="lg">
+        <Button onClick={handleApply} disabled={isPending} className="w-full" size="sm">
           {isPending ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Applying...
+              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+              Applying
             </>
           ) : (
-            'Apply Operation'
+            'Apply'
           )}
         </Button>
       </CardContent>

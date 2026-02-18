@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChevronLeft, ChevronRight, Search, Pencil, Check, X, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, Check, X, Trash2 } from 'lucide-react';
 
 interface DataTableProps {
   data: any[];
+  searchTerm?: string;
   onColumnSelect?: (column: string) => void;
   selectedColumns?: Set<string>;
   columnOrder?: string[];
@@ -15,18 +16,11 @@ interface DataTableProps {
   onSearchChange?: (searchTerm: string) => void;
 }
 
-export function DataTable({ data, onColumnSelect, selectedColumns, columnOrder, columnRenames = {}, onRenameColumn, onDeleteColumn, onSearchChange }: DataTableProps) {
+export function DataTable({ data, searchTerm = '', onColumnSelect, selectedColumns, columnOrder, columnRenames = {}, onRenameColumn, onDeleteColumn, onSearchChange }: DataTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const itemsPerPage = 10;
-
-  const handleSearchChange = (value: string) => {
-    setSearchTerm(value);
-    setCurrentPage(1);
-    onSearchChange?.(value);
-  };
 
   if (!data || data.length === 0) {
     return (
@@ -52,21 +46,6 @@ export function DataTable({ data, onColumnSelect, selectedColumns, columnOrder, 
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search data..."
-            value={searchTerm}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-          />
-        </div>
-        <div className="text-sm text-muted-foreground font-medium">Showing {filteredData.length} rows</div>
-      </div>
-
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">

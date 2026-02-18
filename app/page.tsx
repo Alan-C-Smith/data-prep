@@ -9,7 +9,7 @@ import { PreprocessingPanel } from '@/components/PreprocessingPanel';
 import { useToast } from '@/hooks/use-toast';
 import type { FileRecord, PreprocessingAction } from '@/lib/schema';
 import { format, parseISO, isValid } from 'date-fns';
-import { Loader2, FileQuestion, RotateCcw, RotateCw, RotateCcw as RefreshCw } from 'lucide-react';
+import { Loader2, FileQuestion } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -430,30 +430,6 @@ export default function Home() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <button
-                  onClick={handleUndo}
-                  disabled={historyIndex <= 0}
-                  className="p-2 rounded-lg border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
-                  title="Undo (Ctrl+Z)"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleRedo}
-                  disabled={historyIndex >= history.length - 1}
-                  className="p-2 rounded-lg border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
-                  title="Redo (Ctrl+Y)"
-                >
-                  <RotateCw className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setShowResetDialog(true)}
-                  className="px-4 py-2 rounded-lg border border-border font-medium hover:bg-muted transition-colors flex items-center gap-2"
-                  title="Revert to original data"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Reset
-                </button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center gap-2">
@@ -479,47 +455,48 @@ export default function Home() {
               </div>
             </motion.div>
 
-            {/* Main Content */}
-            <div className="grid lg:grid-cols-3 gap-8">
-              {/* Data Table */}
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="lg:col-span-2"
-              >
-                <h3 className="text-lg font-semibold text-foreground mb-4">Data Preview</h3>
-                <DataTable
-                  data={currentFile.data}
-                  onColumnSelect={handleColumnToggle}
-                  selectedColumns={selectedColumns}
-                  columnOrder={currentFile.columnOrder}
-                  columnRenames={columnRenames}
-                  onRenameColumn={handleRenameColumn}
-                  onDeleteColumn={handleDeleteColumn}
-                  onSearchChange={setSearchTerm}
-                />
-              </motion.div>
+            {/* Preprocessing Panel */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <PreprocessingPanel
+                columns={Object.keys(currentFile.data[0] || {})}
+                data={currentFile.data}
+                selectedColumns={selectedColumns}
+                onColumnSelect={handleColumnToggle}
+                onApply={handlePreprocess}
+                columnRenames={columnRenames}
+                getDisplayName={getDisplayName}
+                searchTerm={searchTerm}
+                columnOrder={currentFile.columnOrder}
+                onSearchChange={setSearchTerm}
+                onReset={() => setShowResetDialog(true)}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                canUndo={historyIndex > 0}
+                canRedo={historyIndex < history.length - 1}
+              />
+            </motion.div>
 
-              {/* Preprocessing Panel */}
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                <PreprocessingPanel
-                  columns={Object.keys(currentFile.data[0] || {})}
-                  data={currentFile.data}
-                  selectedColumns={selectedColumns}
-                  onColumnSelect={handleColumnToggle}
-                  onApply={handlePreprocess}
-                  columnRenames={columnRenames}
-                  getDisplayName={getDisplayName}
-                  searchTerm={searchTerm}
-                  columnOrder={currentFile.columnOrder}
-                />
-              </motion.div>
-            </div>
+            {/* Data Table */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <DataTable
+                data={currentFile.data}
+                searchTerm={searchTerm}
+                onColumnSelect={handleColumnToggle}
+                selectedColumns={selectedColumns}
+                columnOrder={currentFile.columnOrder}
+                columnRenames={columnRenames}
+                onRenameColumn={handleRenameColumn}
+                onDeleteColumn={handleDeleteColumn}
+              />
+            </motion.div>
           </>
         )}
       </main>
