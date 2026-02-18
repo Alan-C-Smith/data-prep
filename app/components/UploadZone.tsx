@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useDataAPI } from '@/hooks/use-data-api';
 import type { FileRecord } from '@/lib/schema';
 
 interface UploadZoneProps {
@@ -13,6 +14,7 @@ interface UploadZoneProps {
 
 export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps) {
   const { toast } = useToast();
+  const { uploadFile } = useDataAPI();
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -30,43 +32,23 @@ export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps)
       }
 
       try {
-        const buffer = await file.arrayBuffer();
-        const XLSX = await import('xlsx');
-        const workbook = XLSX.read(buffer, { type: 'buffer' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json(sheet);
+        // Use backend API for file parsing
+        const uploadedFile = await uploadFile(file);
 
-        // Get column order from the sheet range
-        const columnOrder: string[] = [];
-        if (data.length > 0) {
-          const firstRow = data[0] as Record<string, any>;
-          // Iterate through sheet in order to get actual column sequence
-          const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
-          for (let col = range.s.c; col <= range.e.c; col++) {
-            const cellAddress = XLSX.utils.encode_col(col) + '1';
-            const cell = sheet[cellAddress];
-            if (cell && cell.v) {
-              columnOrder.push(String(cell.v));
-            }
-          }
-          // Fallback to Object.keys if the above didn't work
-          if (columnOrder.length === 0) {
-            columnOrder.push(...Object.keys(firstRow));
-          }
+        if (!uploadedFile) {
+          return;
         }
 
-        // Simple ID generator
+        // Create FileRecord for the app
         const fileId = Date.now().toString(36) + Math.random().toString(36).substr(2);
-
         const fileRecord: FileRecord = {
           id: fileId,
           filename: file.name,
           originalName: file.name,
           mimeType: file.type,
           size: file.size,
-          data: data as Record<string, any>[],
-          columnOrder: columnOrder,
+          data: uploadedFile.data,
+          columnOrder: uploadedFile.columnOrder,
           createdAt: new Date(),
         };
 
@@ -84,7 +66,7 @@ export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps)
         });
       }
     },
-    [onFileUpload, toast]
+    [onFileUpload, toast, uploadFile]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

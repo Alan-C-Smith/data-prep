@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChevronLeft, ChevronRight, Pencil, Check, X, Trash2 } from 'lucide-react';
 
@@ -33,10 +33,14 @@ export function DataTable({ data, searchTerm = '', onColumnSelect, selectedColum
   // Get headers from columnOrder if provided, otherwise from first row keys
   const headers = columnOrder && columnOrder.length > 0 ? columnOrder : Object.keys(data[0]);
 
-  // Filter data
-  const filteredData = data.filter((row) =>
-    headers.some((header) => String(row[header]).toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Filter data with memoization to avoid recalculating on every render
+  const filteredData = useMemo(() => {
+    if (!searchTerm) return data;
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    return data.filter((row) =>
+      headers.some((header) => String(row[header]).toLowerCase().includes(lowerSearchTerm))
+    );
+  }, [data, searchTerm, headers]);
 
   // Pagination
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);

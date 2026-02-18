@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, RotateCcw, RotateCw, RefreshCw, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,7 @@ interface PreprocessingPanelProps {
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
+  isProcessing?: boolean;
 }
 
 type OperationType =
@@ -101,9 +102,28 @@ export function PreprocessingPanel({
   getDisplayName = (name) => name,
   searchTerm = '',
   columnOrder = [],
+  isProcessing = false,
 }: PreprocessingPanelProps) {
   const { toast } = useToast();
-  const [isPending, setIsPending] = useState(false);
+  const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
+  const debounceTimer = useRef<NodeJS.Timeout>();
+
+  // Debounce search input - wait 300ms after user stops typing
+  useEffect(() => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      onSearchChange?.(localSearchTerm);
+    }, 300);
+
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, [localSearchTerm, onSearchChange]);
+
+  // Sync external searchTerm changes
+  useEffect(() => {
+    setLocalSearchTerm(searchTerm);
+  }, [searchTerm]);
 
   const [operation, setOperation] = useState<OperationType>('capitalize');
   const [internalSelectedColumns, setInternalSelectedColumns] = useState<Set<string>>(new Set());
@@ -256,11 +276,7 @@ export function PreprocessingPanel({
     }
 
     try {
-      setIsPending(true);
       onApply(payload);
-      toast({
-        title: 'Preprocessing applied successfully',
-      });
       // Reset form
       setInternalSelectedColumns(new Set());
       setSelectAll(false);
@@ -274,8 +290,6 @@ export function PreprocessingPanel({
         description: error instanceof Error ? error.message : 'Unknown error',
         variant: 'destructive',
       });
-    } finally {
-      setIsPending(false);
     }
   };
 
@@ -322,13 +336,13 @@ export function PreprocessingPanel({
             <input
               type="text"
               placeholder="Search data..."
-              value={searchTerm}
-              onChange={(e) => onSearchChange?.(e.target.value)}
+              value={localSearchTerm}
+              onChange={(e) => setLocalSearchTerm(e.target.value)}
               className="w-full pl-9 pr-10 py-1.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
             />
-            {searchTerm && (
+            {localSearchTerm && (
               <button
-                onClick={() => onSearchChange?.('')}
+                onClick={() => setLocalSearchTerm('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted/50 transition-colors opacity-0 group-hover:opacity-100"
                 title="Clear search"
               >
@@ -507,11 +521,11 @@ export function PreprocessingPanel({
         )}
 
         {/* Apply Button */}
-        <Button onClick={handleApply} disabled={isPending} className="w-full" size="sm">
-          {isPending ? (
+        <Button onClick={handleApply} disabled={isProcessing} className="w-full" size="sm">
+          {isProcessing ? (
             <>
               <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-              Applying
+              Processing
             </>
           ) : (
             'Apply'
