@@ -18,9 +18,9 @@ export interface ParsedFile {
 export function parseExcel(buffer: Buffer, fileName: string): ParsedFile {
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-  const jsonData = XLSX.utils.sheet_to_json(worksheet);
+  const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
 
-  const columnOrder = jsonData.length > 0 ? Object.keys(jsonData[0]) : [];
+  const columnOrder = jsonData.length > 0 ? Object.keys(jsonData[0] as object) : [];
 
   return {
     data: jsonData,
@@ -37,9 +37,9 @@ export function parseCSV(buffer: Buffer, fileName: string): ParsedFile {
   // Use XLSX for CSV parsing as well for consistency
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-  const jsonData = XLSX.utils.sheet_to_json(worksheet);
+  const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
 
-  const columnOrder = jsonData.length > 0 ? Object.keys(jsonData[0]) : [];
+  const columnOrder = jsonData.length > 0 ? Object.keys(jsonData[0] as object) : [];
 
   return {
     data: jsonData,
