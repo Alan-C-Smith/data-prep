@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +15,7 @@ interface UploadZoneProps {
 export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps) {
   const { toast } = useToast();
   const { uploadFile } = useDataAPI();
+  const [isUploading, setIsUploading] = useState(false);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -31,6 +32,7 @@ export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps)
         return;
       }
 
+      setIsUploading(true);
       try {
         // Use backend API for file parsing
         const uploadedFile = await uploadFile(file);
@@ -64,20 +66,47 @@ export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps)
           description: 'Failed to process file',
           variant: 'destructive',
         });
+      } finally {
+        setIsUploading(false);
       }
     },
     [onFileUpload, toast, uploadFile]
   );
 
+  const onDropRejected = useCallback(
+    (fileRejections: any[]) => {
+      fileRejections.forEach(({ file, errors }) => {
+        errors.forEach((error: any) => {
+          if (error.code === 'file-too-large') {
+            toast({
+              title: 'File too large',
+              description: 'Files cannot exceed 50MB. Please choose a smaller file.',
+              variant: 'destructive',
+            });
+          } else {
+            toast({
+              title: 'Upload rejected',
+              description: error.message,
+              variant: 'destructive',
+            });
+          }
+        });
+      });
+    },
+    [toast]
+  );
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    onDropRejected,
     accept: {
       'text/csv': ['.csv'],
       'application/vnd.ms-excel': ['.xls'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
     },
     maxFiles: 1,
-    disabled: isLoading,
+    maxSize: 50 * 1024 * 1024, // 50MB
+    disabled: isLoading || isUploading,
   });
 
   return (
@@ -91,9 +120,9 @@ export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps)
         ${
           isDragActive
             ? 'border-primary bg-primary/5 scale-[1.01]'
-            : 'border-border hover:border-primary/50 hover:bg-muted/30'
+            : 'border-border dark:border-white/25 hover:border-primary/50 dark:hover:border-primary/50 hover:bg-muted/30 dark:hover:bg-white/5'
         }
-        ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
+        ${isLoading || isUploading ? 'opacity-50 cursor-not-allowed' : ''}
       `}
     >
       <input {...getInputProps()} />
@@ -105,7 +134,7 @@ export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps)
         ${isDragActive ? 'bg-primary/20' : 'bg-muted'}
       `}
       >
-        {isLoading ? (
+        {isUploading ? (
           <Loader2 className="w-10 h-10 text-primary animate-spin" />
         ) : (
           <Upload
@@ -117,11 +146,11 @@ export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps)
       </div>
 
       <h3 className="text-xl font-bold font-display text-foreground mb-2">
-        {isLoading ? 'Processing...' : isDragActive ? 'Drop it here!' : 'Upload your dataset'}
+        {isUploading ? 'Uploading...' : isLoading ? 'Processing...' : isDragActive ? 'Drop it here!' : 'Upload your dataset'}
       </h3>
 
       <p className="text-muted-foreground max-w-sm mx-auto mb-6">
-        Drag and drop your Excel (.xlsx) or CSV files here, or click to browse.
+        Drag and drop your Excel (.xlsx) or CSV files here, or click to browse. Maximum file size: 50MB.
       </p>
 
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">

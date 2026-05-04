@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChevronLeft, ChevronRight, Pencil, Check, X, Trash2 } from 'lucide-react';
 
@@ -20,7 +20,7 @@ export function DataTable({ data, searchTerm = '', onColumnSelect, selectedColum
   const [currentPage, setCurrentPage] = useState(1);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   if (!data || data.length === 0) {
     return (
@@ -48,32 +48,61 @@ export function DataTable({ data, searchTerm = '', onColumnSelect, selectedColum
   const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
   const actualStartIndex = (currentPage - 1) * itemsPerPage;
 
+  useEffect(() => {
+    const lastPage = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
+    if (currentPage > lastPage) {
+      setCurrentPage(lastPage);
+    }
+  }, [itemsPerPage, filteredData.length, currentPage]);
+
   return (
     <div className="space-y-4">
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+      <div className="grid gap-4 md:grid-cols-[auto_1fr_auto] md:items-center">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <span>Rows per page:</span>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => {
+              setItemsPerPage(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
           >
-            <ChevronLeft className="w-4 h-4" />
-            Previous
-          </button>
-          <span className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
-          >
-            Next
-            <ChevronRight className="w-4 h-4" />
-          </button>
+            {[10, 25, 50, 100].map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
         </div>
-      )}
+
+        <div className="flex justify-center">
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Previous
+              </button>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+              >
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="text-right text-sm text-muted-foreground">
+          Page {currentPage} of {totalPages}
+        </div>
+      </div>
 
       {/* Table */}
       <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
@@ -166,11 +195,11 @@ export function DataTable({ data, searchTerm = '', onColumnSelect, selectedColum
               {paginatedData.length > 0 ? (
                 paginatedData.map((row, i) => (
                   <TableRow key={i} className="hover:bg-muted/30 transition-colors">
-                    <TableCell className="w-12 px-4 py-4 text-center text-xs text-muted-foreground font-medium bg-muted border-r border-border sticky left-0 z-10">
+                    <TableCell className="w-12 px-4 py-4 text-center text-xs text-[hsl(var(--table-text))] font-medium bg-muted border-r border-border sticky left-0 z-10">
                       {actualStartIndex + i}
                     </TableCell>
                     {headers.map((header) => (
-                      <TableCell key={`${i}-${header}`} className="px-6 py-4 text-sm text-muted-foreground whitespace-nowrap">
+                      <TableCell key={`${i}-${header}`} className="px-6 py-4 text-sm text-[hsl(var(--table-text))] whitespace-nowrap">
                         {String(row[header]).length > 50 ? String(row[header]).substring(0, 50) + '...' : row[header]}
                       </TableCell>
                     ))}

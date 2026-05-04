@@ -48,13 +48,15 @@ export default function Home() {
   };
 
   const handleColumnToggle = (column: string) => {
-    const newSelected = new Set(selectedColumns);
-    if (newSelected.has(column)) {
-      newSelected.delete(column);
-    } else {
-      newSelected.add(column);
-    }
-    setSelectedColumns(newSelected);
+    setSelectedColumns((prevSelected) => {
+      const newSelected = new Set(prevSelected);
+      if (newSelected.has(column)) {
+        newSelected.delete(column);
+      } else {
+        newSelected.add(column);
+      }
+      return newSelected;
+    });
   };
 
   const handlePreprocess = async (action: PreprocessingAction) => {

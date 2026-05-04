@@ -6,7 +6,7 @@
 
 :root {
   /* Vibrant Blue/Indigo Palette */
-  --background: 210 20% 98%;
+  --background: 241 23.3% 90%; /*210 20% 98%*/
   --foreground: 222 47% 11%;
 
   --primary: 230 85% 60%;
@@ -46,6 +46,8 @@
 
   --muted: 217 33% 17%;
   --muted-foreground: 215 20% 65%;
+
+  --table-text: 215 20% 83%;
 
   --accent: 262 83% 58%;
   --accent-foreground: 210 40% 98%;

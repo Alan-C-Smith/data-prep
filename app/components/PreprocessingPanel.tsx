@@ -127,7 +127,6 @@ export function PreprocessingPanel({
 
   const [operation, setOperation] = useState<OperationType>('capitalize');
   const [internalSelectedColumns, setInternalSelectedColumns] = useState<Set<string>>(new Set());
-  const [selectAll, setSelectAll] = useState(false);
   const [removeChars, setRemoveChars] = useState('');
   const [findStr, setFindStr] = useState('');
   const [replaceStr, setReplaceStr] = useState('');
@@ -151,13 +150,22 @@ export function PreprocessingPanel({
 
   const handleSelectAllChange = (checked: boolean) => {
     if (checked) {
-      // Select all columns that aren't already selected
-      const columnsToSelect = columns.filter((col) => !currentSelectedColumns.has(col));
-      columnsToSelect.forEach((col) => handleColumnSelect(col));
+      const allSelected = new Set(columns);
+      if (onColumnSelect) {
+        columns.forEach((col) => {
+          if (!currentSelectedColumns.has(col)) {
+            onColumnSelect(col);
+          }
+        });
+      } else {
+        setInternalSelectedColumns(allSelected);
+      }
     } else {
-      // Deselect all columns
-      const columnsToDeselect = Array.from(currentSelectedColumns);
-      columnsToDeselect.forEach((col) => handleColumnSelect(col));
+      if (onColumnSelect) {
+        Array.from(currentSelectedColumns).forEach((col) => onColumnSelect(col));
+      } else {
+        setInternalSelectedColumns(new Set());
+      }
     }
   };
 
@@ -217,7 +225,7 @@ export function PreprocessingPanel({
       }
     }
 
-    let payload: PreprocessingAction;
+    let payload: PreprocessingAction | null = null;
 
     switch (operation) {
       case 'capitalize':
@@ -249,17 +257,17 @@ export function PreprocessingPanel({
         break;
       case 'removeRows':
         if (useFilteredRows) {
-          // Get indices of rows that match the search filter
           const headers = columnOrder && columnOrder.length > 0 ? columnOrder : Object.keys(data[0] || {});
           const filteredIndices: number[] = [];
-          data.forEach((row, idx) => {
-            const matchesFilter = headers.some((header) =>
-              String(row[header]).toLowerCase().includes(searchTerm.toLowerCase())
-            );
-            if (matchesFilter) {
-              filteredIndices.push(idx);
-            }
-          });
+          const term = searchTerm.toLowerCase().trim();
+          if (term) {
+            data.forEach((row, idx) => {
+              const matchesFilter = headers.some((header) => String(row[header]).toLowerCase().includes(term));
+              if (matchesFilter) {
+                filteredIndices.push(idx);
+              }
+            });
+          }
           payload = { type: 'removeRows', indices: filteredIndices };
         } else {
           const indices = parseRowIndices(rowIndices, data.length);
@@ -273,13 +281,23 @@ export function PreprocessingPanel({
           format: dateFormat,
         };
         break;
+      default:
+        throw new Error(`Unknown operation type: ${operation}`);
+    }
+
+    if (!payload) {
+      toast({
+        title: 'Error',
+        description: 'Failed to create operation payload',
+        variant: 'destructive',
+      });
+      return;
     }
 
     try {
       onApply(payload);
       // Reset form
       setInternalSelectedColumns(new Set());
-      setSelectAll(false);
       setRemoveChars('');
       setFindStr('');
       setReplaceStr('');
