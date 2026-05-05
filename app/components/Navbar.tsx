@@ -17,22 +17,20 @@ export function Navbar() {
             </div>
           </Link>
           <Link href="/">
-            <span className="font-display font-bold text-xl cursor-pointer">DataPrep.ai</span>
+            <span className="font-display font-bold text-xl cursor-pointer">DataPrep</span>
           </Link>
         </div>
 
         <div className="flex items-center gap-4">
-          <a
-            href="https://github.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-          >
-            Documentation
-          </a>
-          <button className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-            Support
-          </button>
+          <Link href="/pricing" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+            Pricing
+          </Link>
+          <Link href="/login" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+            Login
+          </Link>
+          <Link href="/contact" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+            Contact
+          </Link>
 
           {/* Theme Toggle */}
           <button

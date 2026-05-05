@@ -108,26 +108,6 @@ export function applyPreprocessing(
       newData = newData.filter((_: any, idx: number) => !action.indices.includes(idx));
       message = `Removed ${action.indices.length} row(s)`;
       break;
-
-    case 'convertDate':
-      newData = newData.map((row: Record<string, any>) => {
-        const newRow = { ...row };
-        action.columns.forEach((col) => {
-          if (col in newRow) {
-            try {
-              const date = parseISO(String(newRow[col]));
-              if (isValid(date)) {
-                newRow[col] = format(date, action.format);
-              }
-            } catch (e) {
-              // Keep original value if parsing fails
-            }
-          }
-        });
-        return newRow;
-      });
-      message = `Converted dates in ${action.columns.length} column(s)`;
-      break;
   }
 
   return {

@@ -50,8 +50,7 @@ type OperationType =
   | 'removeCharacters'
   | 'replaceCharacters'
   | 'removeDuplicates'
-  | 'removeRows'
-  | 'convertDate';
+  | 'removeRows';
 
 // Helper function to parse row indices from a string supporting ranges and commas
 function parseRowIndices(input: string, maxIndex: number): number[] {
@@ -132,7 +131,6 @@ export function PreprocessingPanel({
   const [replaceStr, setReplaceStr] = useState('');
   const [rowIndices, setRowIndices] = useState('');
   const [useFilteredRows, setUseFilteredRows] = useState(false);
-  const [dateFormat, setDateFormat] = useState('yyyy-MM-dd');
 
   // Use provided selectedColumns or fall back to internal state
   const currentSelectedColumns = selectedColumns || internalSelectedColumns;
@@ -273,13 +271,6 @@ export function PreprocessingPanel({
           const indices = parseRowIndices(rowIndices, data.length);
           payload = { type: 'removeRows', indices };
         }
-        break;
-      case 'convertDate':
-        payload = {
-          type: 'convertDate',
-          columns: columnsToApply,
-          format: dateFormat,
-        };
         break;
       default:
         throw new Error(`Unknown operation type: ${operation}`);
@@ -422,10 +413,6 @@ export function PreprocessingPanel({
                   <SelectItem value="removeRows">Remove Rows</SelectItem>
                 </SelectGroup>
 
-                <SelectGroup className="py-2">
-                  <SelectLabel className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider px-2 py-1 bg-orange-50 dark:bg-orange-950/30 rounded mb-1">📅 Date Conversion</SelectLabel>
-                  <SelectItem value="convertDate">Convert Date Format</SelectItem>
-                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -517,24 +504,6 @@ export function PreprocessingPanel({
                 </p>
               </div>
             )}
-          </div>
-        )}
-
-        {operation === 'convertDate' && (
-          <div className="space-y-1">
-            <label className="text-xs font-semibold">Date Format</label>
-            <Select value={dateFormat} onValueChange={setDateFormat}>
-              <SelectTrigger className="bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="yyyy-MM-dd">YYYY-MM-DD</SelectItem>
-                <SelectItem value="MM/dd/yyyy">MM/DD/YYYY</SelectItem>
-                <SelectItem value="dd/MM/yyyy">DD/MM/YYYY</SelectItem>
-                <SelectItem value="MMMM d, yyyy">Month D, YYYY</SelectItem>
-                <SelectItem value="yyyy">Year Only</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         )}
 

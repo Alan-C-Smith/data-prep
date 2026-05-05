@@ -293,20 +293,20 @@ export default function Home() {
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                       </span>
-                      Instant Processing
+                      Secure processing
                     </div>
 
                     <h1 className="text-4xl md:text-6xl font-display font-bold text-foreground tracking-tight mb-6">
-                      Turn messy data into{' '}
+                      upload, process, download{' '}
                       <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
-                        clean insights
+                        done
                       </span>
                     </h1>
 
-                    <p className="text-lg text-muted-foreground leading-relaxed">
+                    {/* <p className="text-lg text-muted-foreground leading-relaxed">
                       Upload your Excel or CSV files and let our intelligent engine parse, clean, and structure your data
                       for immediate analysis.
-                    </p>
+                    </p> */}
                   </motion.div>
                 </section>
 
@@ -339,7 +339,7 @@ export default function Home() {
                     <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
                       <span className="text-2xl">⚙️</span>
                     </div>
-                    <h3 className="font-semibold text-foreground mb-2">Smart Processing</h3>
+                    <h3 className="font-semibold text-foreground mb-2">Easy Processing</h3>
                     <p className="text-sm text-muted-foreground">Apply multiple transformations to your data</p>
                   </motion.div>
 

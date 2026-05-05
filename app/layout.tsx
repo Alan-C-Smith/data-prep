@@ -5,8 +5,8 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'DataPrep.ai - Data Preprocessing Tool',
-  description: 'Transform your data with intelligent preprocessing operations',
+  title: 'DataPrep - Data Preprocessing Tool',
+  description: 'Transform and export your data quickly and securly.',
 };
 
 export default function RootLayout({

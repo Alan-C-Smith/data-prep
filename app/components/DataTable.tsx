@@ -82,7 +82,7 @@ export function DataTable({ data, searchTerm = '', onColumnSelect, selectedColum
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors min-w-[100px] justify-center"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Previous
@@ -90,7 +90,7 @@ export function DataTable({ data, searchTerm = '', onColumnSelect, selectedColum
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors min-w-[100px] justify-center"
               >
                 Next
                 <ChevronRight className="w-4 h-4" />
