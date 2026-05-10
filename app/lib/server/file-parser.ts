@@ -1,9 +1,10 @@
 /**
  * Server-side file parsing utilities
- * Handles CSV and Excel file parsing efficiently
+ * Handles TSV, CSV and Excel file parsing efficiently
  */
 
 import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
 
 export interface ParsedFile {
   data: any[];
@@ -18,7 +19,7 @@ export interface ParsedFile {
 export function parseExcel(buffer: Buffer, fileName: string): ParsedFile {
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-  const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
+  const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as any[];
 
   const columnOrder = jsonData.length > 0 ? Object.keys(jsonData[0] as object) : [];
 
@@ -30,16 +31,21 @@ export function parseExcel(buffer: Buffer, fileName: string): ParsedFile {
   };
 }
 
-/**
- * Parse CSV file from buffer
- */
-export function parseCSV(buffer: Buffer, fileName: string): ParsedFile {
-  // Use XLSX for CSV parsing as well for consistency
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
-  const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-  const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
+function parseDelimited(buffer: Buffer, delimiter: string, fileName: string): ParsedFile {
+  const text = buffer.toString('utf8');
+  const result = Papa.parse<Record<string, any>>(text, {
+    header: true,
+    delimiter,
+    skipEmptyLines: true,
+  });
 
-  const columnOrder = jsonData.length > 0 ? Object.keys(jsonData[0] as object) : [];
+  if (result.errors.length > 0) {
+    const error = result.errors[0];
+    throw new Error(`Failed to parse ${fileName}: ${error.message}`);
+  }
+
+  const jsonData = result.data;
+  const columnOrder = jsonData.length > 0 ? Object.keys(jsonData[0]) : [];
 
   return {
     data: jsonData,
@@ -47,6 +53,14 @@ export function parseCSV(buffer: Buffer, fileName: string): ParsedFile {
     fileName,
     rowCount: jsonData.length,
   };
+}
+
+export function parseCSV(buffer: Buffer, fileName: string): ParsedFile {
+  return parseDelimited(buffer, ',', fileName);
+}
+
+export function parseTSV(buffer: Buffer, fileName: string): ParsedFile {
+  return parseDelimited(buffer, '\t', fileName);
 }
 
 /**
@@ -59,6 +73,8 @@ export function parseFile(buffer: Buffer, fileName: string): ParsedFile {
     return parseExcel(buffer, fileName);
   } else if (ext === 'csv') {
     return parseCSV(buffer, fileName);
+  } else if (ext === 'tsv') {
+    return parseTSV(buffer, fileName);
   } else {
     throw new Error(`Unsupported file format: ${ext}`);
   }

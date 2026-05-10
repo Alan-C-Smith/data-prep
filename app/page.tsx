@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useDataAPI } from '@/hooks/use-data-api';
 import type { FileRecord, PreprocessingAction } from '@/lib/schema';
 import { Loader2, Download, FileIcon } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +37,8 @@ export default function Home() {
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showNewFileDialog, setShowNewFileDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isRawView, setIsRawView] = useState(false);
+  const [rawText, setRawText] = useState('');
   const { toast } = useToast();
   const { preprocessData } = useDataAPI();
 
@@ -127,6 +130,129 @@ export default function Home() {
     setCurrentFile(null);
     setSelectedColumns(new Set());
     setColumnRenames({});
+    setIsRawView(false);
+    setRawText('');
+  };
+
+  const createRawText = (data: any[]) => {
+    const headers = Object.keys(data[0] || {});
+    const rows = data.map((row) =>
+      headers
+        .map((header) => {
+          const value = row[header];
+          const stringValue = value == null ? '' : String(value);
+          const needsQuoting = stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n');
+          return needsQuoting ? `"${stringValue.replace(/"/g, '""')}"` : stringValue;
+        })
+        .join(',')
+    );
+    return [headers.join(','), ...rows].join('\n');
+  };
+
+  const parseRawText = (text: string) => {
+    const rows: string[][] = [[]];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const nextChar = text[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+
+      if (char === ',' && !inQuotes) {
+        rows[rows.length - 1].push(current);
+        current = '';
+        continue;
+      }
+
+      if ((char === '\n' || char === '\r') && !inQuotes) {
+        if (char === '\r' && text[i + 1] === '\n') {
+          i++;
+        }
+        rows[rows.length - 1].push(current);
+        current = '';
+        rows.push([]);
+        continue;
+      }
+
+      current += char;
+    }
+
+    rows[rows.length - 1].push(current);
+
+    // Remove any final empty row caused by trailing newline
+    if (rows.length > 1 && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === '') {
+      rows.pop();
+    }
+
+    const headers = rows[0].map((cell) => cell.trim());
+    const data = rows.slice(1).map((row) => {
+      const padded = [...row];
+      while (padded.length < headers.length) {
+        padded.push('');
+      }
+      return headers.reduce<Record<string, any>>((acc, header, index) => {
+        acc[header] = padded[index] ?? '';
+        return acc;
+      }, {});
+    });
+
+    return { data, headers };
+  };
+
+  const handleToggleRawView = () => {
+    if (!currentFile) return;
+
+    if (!isRawView) {
+      setRawText(createRawText(currentFile.data));
+      setIsRawView(true);
+      return;
+    }
+
+    try {
+      const parsed = parseRawText(rawText.trim());
+      if (parsed.headers.length === 0) {
+        toast({
+          title: 'Invalid raw input',
+          description: 'Raw text must include a header row and comma-separated values.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push({ data: parsed.data, columnOrder: parsed.headers });
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+      setCurrentFile({
+        ...currentFile,
+        data: parsed.data,
+        columnOrder: parsed.headers,
+      });
+      setSelectedColumns(new Set());
+      setColumnRenames({});
+      setIsRawView(false);
+
+      toast({
+        title: 'Raw text applied',
+        description: 'Your edited CSV-style text has been converted back into the table.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Unable to parse raw text',
+        description: error instanceof Error ? error.message : 'Check the CSV formatting and try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleRenameColumn = (originalName: string, newName: string) => {
@@ -210,41 +336,68 @@ export default function Home() {
     }
   };
 
-  const handleExport = async (format: 'xlsx' | 'csv') => {
+  const handleExport = async (format: 'xlsx' | 'xls' | 'csv' | 'tsv' | 'json') => {
     if (!currentFile) return;
 
     try {
-      if (format === 'xlsx') {
+      const fileName = currentFile.originalName.match(/\.\w+$/)
+        ? currentFile.originalName.replace(/\.\w+$/, `.${format}`)
+        : `${currentFile.originalName}.${format}`;
+
+      if (format === 'xlsx' || format === 'xls') {
         const XLSX = await import('xlsx');
         const ws = XLSX.utils.json_to_sheet(currentFile.data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Data');
-        XLSX.writeFile(wb, currentFile.originalName.replace(/\.\w+$/, '.xlsx'));
-      } else {
-        // CSV export
-        const headers = Object.keys(currentFile.data[0] || {});
-        const csvContent = [
-          headers.join(','),
-          ...currentFile.data.map((row: any) =>
-            headers.map((header) => {
-              const value = row[header];
-              if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
-                return `"${String(value).replace(/"/g, '""')}"`;
-              }
-              return value;
-            }).join(',')
-          ),
-        ].join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        XLSX.writeFile(wb, fileName, { bookType: format });
+        return;
+      }
+
+      if (format === 'json') {
+        const jsonContent = JSON.stringify(currentFile.data, null, 2);
+        const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
-        link.setAttribute('download', currentFile.originalName.replace(/\.\w+$/, '.csv'));
+        link.setAttribute('download', fileName);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        return;
       }
+
+      const headers = Object.keys(currentFile.data[0] || {});
+      const delimiter = format === 'tsv' ? '\t' : ',';
+      const lines = [headers.join(delimiter)];
+
+      for (const row of currentFile.data) {
+        lines.push(
+          headers
+            .map((header) => {
+              const value = row[header];
+              const stringValue = value == null ? '' : String(value);
+              const needsQuoting = stringValue.includes(delimiter) || stringValue.includes('"') || stringValue.includes('\n');
+              if (needsQuoting) {
+                return `"${stringValue.replace(/"/g, '""')}"`;
+              }
+              return stringValue;
+            })
+            .join(delimiter)
+        );
+      }
+
+      const blob = new Blob([lines.join('\n')], {
+        type: format === 'tsv' ? 'text/tab-separated-values;charset=utf-8;' : 'text/csv;charset=utf-8;',
+      });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', fileName);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error) {
       toast({
         title: 'Export failed',
@@ -365,13 +518,20 @@ export default function Home() {
               <div>
                 <h2 className="text-2xl font-bold text-foreground mb-2">{currentFile.originalName}</h2>
                 <p className="text-muted-foreground text-sm">
-                  {currentFile.data.length} rows • {currentFile.size} bytes
+                  {currentFile.data.length} rows • {(currentFile.size / 1024).toFixed(2)} KB
                 </p>
               </div>
               <div className="flex gap-3">
+                <button
+                  onClick={handleToggleRawView}
+                  disabled={isProcessing}
+                  className="px-3 py-2 rounded-lg bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-sm font-medium hover:shadow-lg hover:shadow-primary/25 transition-all duration-200 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none border border-primary/50 hover:border-primary"
+                >
+                  {isRawView ? 'Table View' : 'Raw View'}
+                </button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-medium hover:shadow-lg hover:shadow-primary/25 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none border border-primary/50 hover:border-primary" disabled={isProcessing}>
+                    <button className="px-3 py-2 rounded-lg bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-sm font-medium hover:shadow-lg hover:shadow-primary/25 transition-all duration-200 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none border border-primary/50 hover:border-primary" disabled={isProcessing}>
                       {isProcessing ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
@@ -380,19 +540,28 @@ export default function Home() {
                       {isProcessing ? '' : 'Export'}
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="bg-background border border-border">
                     <DropdownMenuItem onClick={() => handleExport('xlsx')}>
                       Export as Excel (.xlsx)
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport('xls')}>
+                      Export as Excel 97-2003 (.xls)
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleExport('csv')}>
                       Export as CSV (.csv)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport('tsv')}>
+                      Export as TSV (.tsv)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport('json')}>
+                      Export as JSON (.json)
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <button
                   onClick={() => setShowNewFileDialog(true)}
                   disabled={isProcessing}
-                  className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-accent to-accent/80 text-accent-foreground font-medium hover:shadow-lg hover:shadow-accent/25 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none border border-accent/50 hover:border-accent"
+                  className="px-3 py-2 rounded-lg bg-gradient-to-r from-accent to-accent/80 text-accent-foreground text-sm font-medium hover:shadow-lg hover:shadow-accent/25 transition-all duration-200 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none border border-accent/50 hover:border-accent"
                 >
                   <FileIcon className="w-4 h-4" />
                   New File
@@ -400,49 +569,75 @@ export default function Home() {
               </div>
             </motion.div>
 
-            {/* Preprocessing Panel */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <PreprocessingPanel
-                columns={Object.keys(currentFile.data[0] || {})}
-                data={currentFile.data}
-                selectedColumns={selectedColumns}
-                onColumnSelect={handleColumnToggle}
-                onApply={handlePreprocess}
-                columnRenames={columnRenames}
-                getDisplayName={getDisplayName}
-                searchTerm={searchTerm}
-                columnOrder={currentFile.columnOrder}
-                onSearchChange={setSearchTerm}
-                onReset={() => setShowResetDialog(true)}
-                onUndo={handleUndo}
-                onRedo={handleRedo}
-                canUndo={historyIndex > 0}
-                canRedo={historyIndex < history.length - 1}
-                isProcessing={isProcessing}
-              />
-            </motion.div>
+            {!isRawView && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <PreprocessingPanel
+                  columns={Object.keys(currentFile.data[0] || {})}
+                  data={currentFile.data}
+                  selectedColumns={selectedColumns}
+                  onColumnSelect={handleColumnToggle}
+                  onApply={handlePreprocess}
+                  columnRenames={columnRenames}
+                  getDisplayName={getDisplayName}
+                  searchTerm={searchTerm}
+                  columnOrder={currentFile.columnOrder}
+                  onSearchChange={setSearchTerm}
+                  onReset={() => setShowResetDialog(true)}
+                  onUndo={handleUndo}
+                  onRedo={handleRedo}
+                  canUndo={historyIndex > 0}
+                  canRedo={historyIndex < history.length - 1}
+                  isProcessing={isProcessing}
+                />
+              </motion.div>
+            )}
 
-            {/* Data Table */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <DataTable
-                data={currentFile.data}
-                searchTerm={searchTerm}
-                onColumnSelect={handleColumnToggle}
-                selectedColumns={selectedColumns}
-                columnOrder={currentFile.columnOrder}
-                columnRenames={columnRenames}
-                onRenameColumn={handleRenameColumn}
-                onDeleteColumn={handleDeleteColumn}
-              />
-            </motion.div>
+            {isRawView ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-border bg-muted/10 p-4 shadow-sm">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div>
+                        <h3 className="text-lg font-semibold">Raw Text Editor</h3>
+                        <p className="text-sm text-muted-foreground">Edit comma-separated rows and toggle back to update the table.</p>
+                      </div>
+                      <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">CSV-style</span>
+                    </div>
+                    <Textarea
+                      value={rawText}
+                      onChange={(e) => setRawText(e.target.value)}
+                      className="min-h-[360px] font-mono text-sm bg-white text-slate-950 placeholder:text-slate-500 border border-border"
+                      spellCheck={false}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <DataTable
+                  data={currentFile.data}
+                  searchTerm={searchTerm}
+                  onColumnSelect={handleColumnToggle}
+                  selectedColumns={selectedColumns}
+                  columnOrder={currentFile.columnOrder}
+                  columnRenames={columnRenames}
+                  onRenameColumn={handleRenameColumn}
+                  onDeleteColumn={handleDeleteColumn}
+                />
+              </motion.div>
+            )}
           </>
         )}
       </main>

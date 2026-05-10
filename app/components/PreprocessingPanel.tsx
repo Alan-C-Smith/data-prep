@@ -50,7 +50,10 @@ type OperationType =
   | 'removeCharacters'
   | 'replaceCharacters'
   | 'removeDuplicates'
-  | 'removeRows';
+  | 'removeRows'
+  | 'sortColumn'
+  | 'transpose'
+  | 'mergeColumns';
 
 // Helper function to parse row indices from a string supporting ranges and commas
 function parseRowIndices(input: string, maxIndex: number): number[] {
@@ -131,6 +134,9 @@ export function PreprocessingPanel({
   const [replaceStr, setReplaceStr] = useState('');
   const [rowIndices, setRowIndices] = useState('');
   const [useFilteredRows, setUseFilteredRows] = useState(false);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [mergeColumnName, setMergeColumnName] = useState('');
+  const [mergeDelimiter, setMergeDelimiter] = useState(' ');
 
   // Use provided selectedColumns or fall back to internal state
   const currentSelectedColumns = selectedColumns || internalSelectedColumns;
@@ -172,13 +178,37 @@ export function PreprocessingPanel({
 
     // Validate operation-specific inputs
     if (
-      ['capitalize', 'lowercase', 'capitalizeFirst', 'removeCharacters', 'replaceCharacters', 'removeDuplicates'].includes(
+      ['capitalize', 'lowercase', 'capitalizeFirst', 'removeCharacters', 'replaceCharacters', 'removeDuplicates', 'sortColumn', 'mergeColumns'].includes(
         operation
       ) &&
       columnsToApply.length === 0
     ) {
       toast({
         title: 'Please select at least one column',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (operation === 'sortColumn' && columnsToApply.length !== 1) {
+      toast({
+        title: 'Please select exactly one column to sort by',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (operation === 'mergeColumns' && columnsToApply.length < 2) {
+      toast({
+        title: 'Please select at least two columns to merge',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (operation === 'mergeColumns' && !mergeColumnName.trim()) {
+      toast({
+        title: 'Please enter a name for the merged column',
         variant: 'destructive',
       });
       return;
@@ -253,6 +283,24 @@ export function PreprocessingPanel({
       case 'removeDuplicates':
         payload = { type: 'removeDuplicates', columns: columnsToApply };
         break;
+      case 'sortColumn':
+        payload = {
+          type: 'sortColumn',
+          column: columnsToApply[0],
+          direction: sortDirection,
+        };
+        break;
+      case 'transpose':
+        payload = { type: 'transpose' };
+        break;
+      case 'mergeColumns':
+        payload = {
+          type: 'mergeColumns',
+          columns: columnsToApply,
+          newColumn: mergeColumnName.trim(),
+          delimiter: mergeDelimiter,
+        };
+        break;
       case 'removeRows':
         if (useFilteredRows) {
           const headers = columnOrder && columnOrder.length > 0 ? columnOrder : Object.keys(data[0] || {});
@@ -293,6 +341,10 @@ export function PreprocessingPanel({
       setFindStr('');
       setReplaceStr('');
       setRowIndices('');
+      setUseFilteredRows(false);
+      setSortDirection('asc');
+      setMergeColumnName('');
+      setMergeDelimiter(' ');
     } catch (error) {
       toast({
         title: 'Error applying preprocessing',
@@ -408,6 +460,17 @@ export function PreprocessingPanel({
                 </SelectGroup>
 
                 <SelectGroup className="py-2 border-b border-border">
+                  <SelectLabel className="text-xs font-bold text-cyan-600 uppercase tracking-wider px-2 py-1 bg-cyan-50 rounded mb-1">↕️ Sort / Transpose</SelectLabel>
+                  <SelectItem value="sortColumn">Sort Column</SelectItem>
+                  <SelectItem value="transpose">Transpose Table</SelectItem>
+                </SelectGroup>
+
+                <SelectGroup className="py-2 border-b border-border">
+                  <SelectLabel className="text-xs font-bold text-amber-600 uppercase tracking-wider px-2 py-1 bg-amber-50 rounded mb-1">🧩 Merge Columns</SelectLabel>
+                  <SelectItem value="mergeColumns">Merge Columns</SelectItem>
+                </SelectGroup>
+
+                <SelectGroup className="py-2 border-b border-border">
                   <SelectLabel className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider px-2 py-1 bg-purple-50 dark:bg-purple-950/30 rounded mb-1">🎯 Deduplication & Removal</SelectLabel>
                   <SelectItem value="removeDuplicates">Remove Duplicates</SelectItem>
                   <SelectItem value="removeRows">Remove Rows</SelectItem>
@@ -421,7 +484,7 @@ export function PreprocessingPanel({
       <CardContent className="py-3 px-4 space-y-3">
 
         {/* Column Selection (for operations that require it) */}
-        {operation !== 'removeRows' && (
+        {operation !== 'removeRows' && operation !== 'transpose' && (
           <Collapsible className="space-y-1">
             <CollapsibleTrigger asChild>
               <Button variant="outline" className="w-full justify-between text-xs h-8 py-1">
@@ -462,6 +525,50 @@ export function PreprocessingPanel({
                 onChange={(e) => setReplaceStr(e.target.value)}
               />
             </div>
+          </div>
+        )}
+
+        {operation === 'sortColumn' && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold">Sort direction</label>
+              <Select value={sortDirection} onValueChange={(value: any) => setSortDirection(value)}>
+                <SelectTrigger className="bg-background h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="asc">Ascending</SelectItem>
+                  <SelectItem value="desc">Descending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
+        {operation === 'mergeColumns' && (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold">Merged column name</label>
+              <Input
+                placeholder="New column name"
+                value={mergeColumnName}
+                onChange={(e) => setMergeColumnName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold">Delimiter</label>
+              <Input
+                placeholder="e.g. space, comma, dash"
+                value={mergeDelimiter}
+                onChange={(e) => setMergeDelimiter(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+
+        {operation === 'transpose' && (
+          <div className="p-3 rounded-lg border border-border bg-muted/50 text-xs text-muted-foreground">
+            Transpose will swap rows and columns for the full table. The result is a new table where each original column becomes a row.
           </div>
         )}
 
@@ -508,16 +615,16 @@ export function PreprocessingPanel({
         )}
 
         {/* Apply Button */}
-        <Button onClick={handleApply} disabled={isProcessing} className="w-full" size="sm">
+        <button onClick={handleApply} disabled={isProcessing} className="w-full px-4 py-1.5 rounded-lg bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-medium hover:shadow-lg hover:shadow-primary/25 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none border border-primary/50 hover:border-primary">
           {isProcessing ? (
             <>
-              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
               Processing
             </>
           ) : (
             'Apply'
           )}
-        </Button>
+        </button>
       </CardContent>
     </Card>
   );

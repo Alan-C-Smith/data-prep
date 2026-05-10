@@ -108,6 +108,84 @@ export function applyPreprocessing(
       newData = newData.filter((_: any, idx: number) => !action.indices.includes(idx));
       message = `Removed ${action.indices.length} row(s)`;
       break;
+
+    case 'sortColumn': {
+      const direction = action.direction === 'desc' ? -1 : 1;
+      newData.sort((a: Record<string, any>, b: Record<string, any>) => {
+        const aValue = a[action.column];
+        const bValue = b[action.column];
+        const aNum = Number(aValue);
+        const bNum = Number(bValue);
+        const numericComparable = !Number.isNaN(aNum) && !Number.isNaN(bNum);
+
+        if (numericComparable) {
+          return (aNum - bNum) * direction;
+        }
+
+        const aText = String(aValue ?? '').toLowerCase();
+        const bText = String(bValue ?? '').toLowerCase();
+        if (aText < bText) return -1 * direction;
+        if (aText > bText) return 1 * direction;
+        return 0;
+      });
+      message = `Sorted by ${action.column} (${action.direction})`;
+      break;
+    }
+
+    case 'transpose': {
+      const headers = columnOrder && columnOrder.length > 0 ? columnOrder : Object.keys(newData[0] || {});
+      const isSyntheticTranspose =
+        headers.length > 1 &&
+        headers[0] === 'Column' &&
+        headers.slice(1).every((header, index) => header === `Row ${index}`);
+
+      if (isSyntheticTranspose) {
+        const rowLabels = headers.slice(1);
+        const originalHeaders = newData.map((row: Record<string, any>) => row.Column);
+        const restored = rowLabels.map((label) => {
+          const row: Record<string, any> = {};
+          originalHeaders.forEach((header, columnIndex) => {
+            row[header] = newData[columnIndex]?.[label];
+          });
+          return row;
+        });
+
+        newData = restored;
+        columnOrder = originalHeaders;
+        message = `Restored original table from transposed state`;
+      } else {
+        const rowCount = newData.length;
+        const transposed = headers.map((header) => {
+          const row: Record<string, any> = { Column: header };
+          for (let i = 0; i < rowCount; i += 1) {
+            row[`Row ${i}`] = newData[i]?.[header];
+          }
+          return row;
+        });
+        const newColumnOrder = ['Column', ...Array.from({ length: rowCount }, (_, i) => `Row ${i}`)];
+        newData = transposed;
+        columnOrder = newColumnOrder;
+        message = `Transposed table (${headers.length} columns → ${newData.length} rows)`;
+      }
+      break;
+    }
+
+    case 'mergeColumns': {
+      const merged = newData.map((row: Record<string, any>) => {
+        const newRow = { ...row };
+        newRow[action.newColumn] = action.columns
+          .map((column) => (column in newRow ? String(newRow[column]) : ''))
+          .join(action.delimiter);
+        return newRow;
+      });
+      const newColumnOrder = columnOrder.includes(action.newColumn)
+        ? columnOrder
+        : [...columnOrder, action.newColumn];
+      newData = merged;
+      columnOrder = newColumnOrder;
+      message = `Merged ${action.columns.length} column(s) into ${action.newColumn}`;
+      break;
+    }
   }
 
   return {

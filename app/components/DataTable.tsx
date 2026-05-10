@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChevronLeft, ChevronRight, Pencil, Check, X, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, Check, X, Trash2, Eye, EyeOff } from 'lucide-react';
 
 interface DataTableProps {
   data: any[];
@@ -21,6 +21,7 @@ export function DataTable({ data, searchTerm = '', onColumnSelect, selectedColum
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [enablePagination, setEnablePagination] = useState(true);
 
   if (!data || data.length === 0) {
     return (
@@ -45,7 +46,7 @@ export function DataTable({ data, searchTerm = '', onColumnSelect, selectedColum
   // Pagination
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedData = enablePagination ? filteredData.slice(startIndex, startIndex + itemsPerPage) : filteredData;
   const actualStartIndex = (currentPage - 1) * itemsPerPage;
 
   useEffect(() => {
@@ -59,25 +60,46 @@ export function DataTable({ data, searchTerm = '', onColumnSelect, selectedColum
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-[auto_1fr_auto] md:items-center">
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <span>Rows per page:</span>
-          <select
-            value={itemsPerPage}
-            onChange={(e) => {
-              setItemsPerPage(Number(e.target.value));
-              setCurrentPage(1);
-            }}
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-          >
-            {[10, 25, 50, 100].map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
+          {enablePagination && (
+            <>
+              <span>Rows per page:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              >
+                {[10, 25, 50, 100].map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
         </div>
 
-        <div className="flex justify-center">
-          {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-3">
+          <button
+            onClick={() => setEnablePagination(!enablePagination)}
+            title={enablePagination ? 'Show all rows' : 'Use pagination'}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:bg-muted transition-colors"
+          >
+            {enablePagination ? (
+              <>
+                <Eye className="w-4 h-4" />
+                <span className="text-xs font-medium">Paginated</span>
+              </>
+            ) : (
+              <>
+                <EyeOff className="w-4 h-4" />
+                <span className="text-xs font-medium">All Rows</span>
+              </>
+            )}
+          </button>
+          {enablePagination && totalPages > 1 && (
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -99,11 +121,12 @@ export function DataTable({ data, searchTerm = '', onColumnSelect, selectedColum
           )}
         </div>
 
-        <div className="text-right text-sm text-muted-foreground">
-          Page {currentPage} of {totalPages}
+        {enablePagination && (
+          <div className="text-right text-sm text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </div>
+        )}
         </div>
-      </div>
-
       {/* Table */}
       <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
         <div className="overflow-x-auto">

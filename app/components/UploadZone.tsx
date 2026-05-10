@@ -23,10 +23,14 @@ export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps)
 
       const file = acceptedFiles[0];
 
-      if (!file.name.endsWith('.csv') && !file.name.match(/\.xls(x)?$/)) {
+      if (
+        !file.name.endsWith('.csv') &&
+        !file.name.endsWith('.tsv') &&
+        !file.name.match(/\.xls(x)?$/)
+      ) {
         toast({
           title: 'Invalid file type',
-          description: 'Please upload a CSV or Excel file.',
+          description: 'Please upload a CSV, TSV, or Excel file.',
           variant: 'destructive',
         });
         return;
@@ -80,7 +84,7 @@ export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps)
           if (error.code === 'file-too-large') {
             toast({
               title: 'File too large',
-              description: 'Files cannot exceed 50MB. Please choose a smaller file.',
+              description: 'Files cannot exceed 10MB. Please choose a smaller file.',
               variant: 'destructive',
             });
           } else {
@@ -101,11 +105,12 @@ export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps)
     onDropRejected,
     accept: {
       'text/csv': ['.csv'],
+      'text/tab-separated-values': ['.tsv'],
       'application/vnd.ms-excel': ['.xls'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
     },
     maxFiles: 1,
-    maxSize: 50 * 1024 * 1024, // 50MB
+    maxSize: 10 * 1024 * 1024, // 10MB
     disabled: isLoading || isUploading,
   });
 
@@ -150,7 +155,7 @@ export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps)
       </h3>
 
       <p className="text-muted-foreground max-w-sm mx-auto mb-6">
-        Drag and drop your Excel .xlsx or .csv files here, or click to browse. Maximum file size: 50MB.
+        Drag and drop your Excel, CSV, or TSV files here, or click to browse. Maximum file size: 10MB.
       </p>
 
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">

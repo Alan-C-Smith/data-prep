@@ -9,6 +9,9 @@ export const preprocessingActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("replaceCharacters"), columns: z.array(z.string()), find: z.string(), replace: z.string() }),
   z.object({ type: z.literal("removeDuplicates"), columns: z.array(z.string()) }),
   z.object({ type: z.literal("removeRows"), indices: z.array(z.number()) }),
+  z.object({ type: z.literal("sortColumn"), column: z.string(), direction: z.enum(["asc", "desc"]) }),
+  z.object({ type: z.literal("transpose") }),
+  z.object({ type: z.literal("mergeColumns"), columns: z.array(z.string()), newColumn: z.string(), delimiter: z.string() }),
 ]);
 
 export type PreprocessingAction = z.infer<typeof preprocessingActionSchema>;
