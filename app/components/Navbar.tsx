@@ -22,7 +22,7 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-4">
-          <Link href="/pricing" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+          {/* <Link href="/pricing" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
             Pricing
           </Link>
           <Link href="/login" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
@@ -30,7 +30,7 @@ export function Navbar() {
           </Link>
           <Link href="/contact" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
             Contact
-          </Link>
+          </Link> */}
 
           {/* Theme Toggle */}
           <button

@@ -155,7 +155,7 @@ export function UploadZone({ onFileUpload, isLoading = false }: UploadZoneProps)
       </h3>
 
       <p className="text-muted-foreground max-w-sm mx-auto mb-6">
-        Drag and drop your Excel, CSV, or TSV files here, or click to browse. Maximum file size: 10MB.
+        Drag and drop your Excel, CSV, or TSV files here, or click to browse. Maximum file size: 10MB
       </p>
 
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
