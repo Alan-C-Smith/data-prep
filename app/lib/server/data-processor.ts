@@ -144,7 +144,7 @@ export function applyPreprocessing(
         const originalHeaders = newData.map((row: Record<string, any>) => row.Column);
         const restored = rowLabels.map((label) => {
           const row: Record<string, any> = {};
-          originalHeaders.forEach((header, columnIndex) => {
+          originalHeaders.forEach((header: string, columnIndex: number) => {
             row[header] = newData[columnIndex]?.[label];
           });
           return row;
