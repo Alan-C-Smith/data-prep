@@ -1,11 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { Layers, Moon, Sun } from 'lucide-react';
+import { Layers, Moon, Sun, LogOut } from 'lucide-react';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/app/contexts/auth-context';
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <nav className="border-b border-border/50 bg-background/80 backdrop-blur-md sticky top-0 z-50">
@@ -25,9 +31,22 @@ export function Navbar() {
           <Link href="/pricing" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
             Pricing
           </Link>
-          <Link href="/login" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-            Login
-          </Link>
+          {user ? (
+            <>
+              <span className="text-sm text-muted-foreground">{user.email}</span>
+              <button
+                onClick={handleSignOut}
+                className="p-2 rounded-lg border border-border hover:bg-muted hover:border-primary/50 transition-all"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
+              </button>
+            </>
+          ) : (
+            <Link href="/login" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+              Login
+            </Link>
+          )}
           <Link href="/contact" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
             Contact
           </Link>
