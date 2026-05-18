@@ -17,7 +17,7 @@ export function Navbar() {
             </div>
           </Link>
           <Link href="/">
-            <span className="font-display font-bold text-xl cursor-pointer">DataPrep</span>
+            <span className="font-display font-bold text-xl cursor-pointer">Data Prep Online</span>
           </Link>
         </div>
 
